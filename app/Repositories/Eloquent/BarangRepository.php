@@ -59,4 +59,13 @@ class BarangRepository extends BaseRepository implements BarangRepositoryInterfa
 
         return $query->get();
     }
+
+    public function ringkasan(): array
+    {
+        return [
+            'total_sku' => Barang::count(),
+            'total_stok' => (int) Barang::sum('stok'),
+            'di_bawah_minimum' => Barang::whereColumn('stok', '<=', 'stok_minimum')->count(),
+        ];
+    }
 }

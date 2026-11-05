@@ -28,7 +28,7 @@ export default function Index({ barang, kategori, filters }: Props) {
                 data={barang}
                 url="/stok"
                 search={filters.search}
-                searchPlaceholder="Cari SKU, nama, kategori, atau warna..."
+                searchPlaceholder="Cari SKU, nama, kategori, warna..."
                 extraParams={{ kategori: filters.kategori || undefined }}
                 toolbar={
                     <div className="w-full sm:w-56">

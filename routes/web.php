@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BarangController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LaporanController;
 use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PemasokController;
 use App\Http\Controllers\PenerimaanController;
@@ -31,6 +32,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('pelanggan', PelangganController::class)->except('show');
         Route::resource('rak', RakController::class)->except('show');
         Route::resource('pengguna', PenggunaController::class)->except('show');
+        Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::resource('pengadaan', PengadaanController::class);
 
         // Pesanan tidak dihapus; yang ada hanya "batal" (selama status masih baru).

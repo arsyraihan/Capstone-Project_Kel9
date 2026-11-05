@@ -29,8 +29,9 @@ interface Props<T> {
 }
 
 const labelHalaman = (label: string) => {
-    if (label.includes('Previous')) return 'Sebelumnya';
-    if (label.includes('Next')) return 'Berikutnya';
+    const huruf = label.toLowerCase();
+    if (huruf.includes('previous') || huruf.includes('sebelumnya')) return 'Sebelumnya';
+    if (huruf.includes('next') || huruf.includes('berikutnya')) return 'Berikutnya';
     return label;
 };
 
@@ -70,7 +71,7 @@ export default function DataTable<T extends { id: number }>({
     return (
         <div className="rounded border border-line bg-white">
             <div className={`flex flex-wrap items-center justify-between gap-3 border-b border-line p-3 print:hidden ${hideSearch && !toolbar ? 'hidden' : ''}`}>
-                {hideSearch ? <div /> : <div className="relative w-full sm:w-72">
+                {hideSearch ? <div /> : <div className="relative w-full sm:w-80">
                     <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" />
                     <input
                         type="search"

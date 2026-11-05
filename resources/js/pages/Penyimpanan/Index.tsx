@@ -25,7 +25,7 @@ export default function Index({ barang, rak, filters }: Props) {
                 data={barang}
                 url="/penyimpanan"
                 search={filters.search}
-                searchPlaceholder="Cari SKU, nama, kategori, atau warna..."
+                searchPlaceholder="Cari SKU, nama, kategori, warna..."
                 columns={[
                     { header: 'SKU', cell: (r) => <span className="font-medium">{r.sku}</span> },
                     { header: 'Nama Barang', cell: (r) => r.nama },

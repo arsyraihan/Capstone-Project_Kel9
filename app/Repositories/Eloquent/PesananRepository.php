@@ -7,6 +7,7 @@ use App\Models\Pesanan;
 use App\Repositories\Interfaces\PesananRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class PesananRepository extends BaseRepository implements PesananRepositoryInterface
@@ -118,5 +119,15 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
 
             return $pesanan;
         });
+    }
+
+    public function jumlahBelumDikirim(): int
+    {
+        return Pesanan::whereIn('status', ['baru', 'diambil', 'dikemas'])->count();
+    }
+
+    public function terbaru(int $limit = 5): Collection
+    {
+        return $this->query()->orderByDesc('id')->limit($limit)->get();
     }
 }

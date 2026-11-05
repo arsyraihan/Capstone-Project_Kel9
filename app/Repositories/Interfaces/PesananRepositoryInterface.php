@@ -4,6 +4,7 @@ namespace App\Repositories\Interfaces;
 
 use App\Models\Pesanan;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 interface PesananRepositoryInterface extends RepositoryInterface
 {
@@ -37,4 +38,10 @@ interface PesananRepositoryInterface extends RepositoryInterface
      * @throws \App\Exceptions\AlurPesananException
      */
     public function batalkan(int|string $id): Pesanan;
+
+    /** Jumlah pesanan yang belum dikirim (status baru, diambil, atau dikemas). */
+    public function jumlahBelumDikirim(): int;
+
+    /** Pesanan terbaru (untuk Dashboard). */
+    public function terbaru(int $limit = 5): Collection;
 }

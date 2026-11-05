@@ -20,6 +20,7 @@ return [
     ],
     'confirmed' => 'Konfirmasi :attribute tidak cocok.',
     'date' => ':attribute bukan tanggal yang valid.',
+    'after_or_equal' => ':attribute harus berupa tanggal setelah atau sama dengan :date.',
     'in' => ':attribute yang dipilih tidak valid.',
     'distinct' => ':attribute memiliki nilai duplikat.',
     'array' => ':attribute harus berupa daftar.',

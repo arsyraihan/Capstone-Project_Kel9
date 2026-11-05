@@ -18,4 +18,7 @@ interface BarangRepositoryInterface extends RepositoryInterface
 
     /** Barang dengan stok <= stok minimum, yang paling kritis di atas. */
     public function getStokMinimum(?int $limit = null): Collection;
+
+    /** Angka ringkasan Dashboard: total SKU, total stok (pcs), dan jumlah barang di bawah/sama dengan stok minimum. */
+    public function ringkasan(): array;
 }

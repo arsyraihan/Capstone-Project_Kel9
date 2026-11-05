@@ -26,7 +26,7 @@ export default function AdminLayout({ title, children }: PropsWithChildren<Props
     }, [flash?.success, flash?.error]);
 
     return (
-        <div className="min-h-screen bg-page">
+        <div className="min-h-screen bg-page print:bg-white">
             <Head title={title} />
             <Toaster position="top-right" toastOptions={{ style: { fontSize: '14px', borderRadius: '4px' } }} />
 
