@@ -6,7 +6,9 @@ import Button, { LinkButton } from '@/components/Button';
 import ConfirmModal from '@/components/ConfirmModal';
 import PageHeader from '@/components/PageHeader';
 import StatusBadge from '@/components/StatusBadge';
-import { formatTanggal } from '@/lib/format';
+import useAuth from '@/hooks/useAuth';
+import { formatTanggal, formatWaktu } from '@/lib/format';
+import { namaPeran } from '@/lib/peran';
 import { Pesanan } from '@/types';
 
 const langkah = ['baru', 'diambil', 'dikemas', 'dikirim', 'selesai'] as const;
@@ -24,7 +26,9 @@ export default function Show({ pesanan }: { pesanan: Pesanan }) {
     const [batal, setBatal] = useState(false);
     const detail = pesanan.detail ?? [];
     const posisi = langkah.indexOf(pesanan.status as (typeof langkah)[number]);
-    const dapatDiubah = pesanan.status === 'baru';
+    const { is } = useAuth();
+    // Hanya Staf Pengadaan & CO yang boleh mengubah/membatalkan pesanan (selama masih baru).
+    const dapatDiubah = pesanan.status === 'baru' && is('pengadaan');
 
     return (
         <AdminLayout title={`Pesanan ${pesanan.no_pesanan}`}>
@@ -87,6 +91,41 @@ export default function Show({ pesanan }: { pesanan: Pesanan }) {
                         </Info>
                     </div>
                 </dl>
+            </div>
+
+            <div className="mb-4 rounded border border-line bg-white">
+                <div className="border-b border-line px-4 py-3 text-sm font-semibold text-gray-900">Riwayat Proses</div>
+                <table className="w-full border-collapse text-sm">
+                    <thead>
+                        <tr className="bg-gray-100 text-left text-gray-700">
+                            <th className="w-14 border border-line px-3 py-2 text-center font-semibold">No</th>
+                            <th className="border border-line px-3 py-2 font-semibold">Tahap</th>
+                            <th className="border border-line px-3 py-2 font-semibold">Dikerjakan oleh</th>
+                            <th className="border border-line px-3 py-2 font-semibold">Peran</th>
+                            <th className="border border-line px-3 py-2 font-semibold">Waktu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {(pesanan.riwayat ?? []).length === 0 && (
+                            <tr>
+                                <td colSpan={5} className="border border-line px-3 py-6 text-center text-gray-500">
+                                    Belum ada riwayat proses untuk pesanan ini.
+                                </td>
+                            </tr>
+                        )}
+                        {(pesanan.riwayat ?? []).map((r, i) => (
+                            <tr key={r.id} className="odd:bg-white even:bg-gray-50">
+                                <td className="border border-line px-3 py-2 text-center">{i + 1}</td>
+                                <td className="border border-line px-3 py-2">
+                                    <StatusBadge status={r.status} />
+                                </td>
+                                <td className="border border-line px-3 py-2 font-medium">{r.user?.name ?? '-'}</td>
+                                <td className="border border-line px-3 py-2">{r.user ? namaPeran[r.user.role] : '-'}</td>
+                                <td className="border border-line px-3 py-2">{formatWaktu(r.waktu)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
 
             <div className="rounded border border-line bg-white">

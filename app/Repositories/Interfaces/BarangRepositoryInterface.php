@@ -21,4 +21,7 @@ interface BarangRepositoryInterface extends RepositoryInterface
 
     /** Angka ringkasan Dashboard: total SKU, total stok (pcs), dan jumlah barang di bawah/sama dengan stok minimum. */
     public function ringkasan(): array;
+
+    /** Jumlah barang yang belum ditempatkan di rak mana pun. */
+    public function jumlahTanpaRak(): int;
 }

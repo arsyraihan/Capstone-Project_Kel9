@@ -17,6 +17,16 @@ use App\Http\Controllers\RakController;
 use App\Http\Controllers\StokController;
 use Illuminate\Support\Facades\Route;
 
+/*
+ * Peran:
+ *   admin       - akun pengguna & master data
+ *   pengadaan   - Staf Pengadaan & CO (PO ke pemasok, pesanan pelanggan)
+ *   gudang      - Staf Gudang (penerimaan, penyimpanan)
+ *   picker      - Packing (pengambilan barang)
+ *   pengiriman  - Pengemasan & Pengiriman
+ *   manajemen   - Manajemen User (uang masuk/keluar; fitur kas menyusul)
+ */
+
 Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware('auth')->group(function () {
@@ -25,33 +35,55 @@ Route::middleware('auth')->group(function () {
     Route::get('stok', [StokController::class, 'index'])->name('stok.index');
     Route::get('stok/{barang}/kartu', [StokController::class, 'kartu'])->name('stok.kartu');
 
-    // Khusus admin
+    // Admin: master data dan akun pengguna
     Route::middleware('role:admin')->group(function () {
         Route::resource('barang', BarangController::class)->except('show');
         Route::resource('pemasok', PemasokController::class)->except('show');
         Route::resource('pelanggan', PelangganController::class)->except('show');
         Route::resource('rak', RakController::class)->except('show');
         Route::resource('pengguna', PenggunaController::class)->except('show');
-        Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
-        Route::resource('pengadaan', PengadaanController::class);
+    });
 
+    // Laporan stok / barang masuk / barang keluar
+    Route::get('laporan', [LaporanController::class, 'index'])
+        ->middleware('role:admin,pengadaan,gudang')
+        ->name('laporan.index');
+
+    // Staf Pengadaan & CO: membuat dan mengubah PO serta pesanan.
+    // (Didaftarkan lebih dulu agar /create tidak tertangkap oleh route {id} di bawah.)
+    Route::middleware('role:pengadaan')->group(function () {
+        Route::resource('pengadaan', PengadaanController::class)->except(['index', 'show']);
+        Route::resource('pesanan', PesananController::class)->except(['index', 'show', 'destroy']);
         // Pesanan tidak dihapus; yang ada hanya "batal" (selama status masih baru).
-        Route::resource('pesanan', PesananController::class)->except('destroy');
         Route::post('pesanan/{id}/batal', [PesananController::class, 'batal'])->name('pesanan.batal');
     });
 
-    // Admin dan petugas gudang
-    Route::middleware('role:admin,petugas')->group(function () {
+    // Melihat daftar dan detail PO/pesanan (baca saja untuk admin dan manajemen)
+    Route::middleware('role:pengadaan,admin,manajemen')->group(function () {
+        Route::get('pengadaan', [PengadaanController::class, 'index'])->name('pengadaan.index');
+        Route::get('pengadaan/{pengadaan}', [PengadaanController::class, 'show'])->whereNumber('pengadaan')->name('pengadaan.show');
+        Route::get('pesanan', [PesananController::class, 'index'])->name('pesanan.index');
+        Route::get('pesanan/{pesanan}', [PesananController::class, 'show'])->whereNumber('pesanan')->name('pesanan.show');
+    });
+
+    // Staf Gudang: penerimaan barang dan penyimpanan di rak
+    Route::middleware('role:gudang')->group(function () {
         Route::get('penerimaan', [PenerimaanController::class, 'index'])->name('penerimaan.index');
         Route::get('penerimaan/{id}', [PenerimaanController::class, 'show'])->name('penerimaan.show');
         Route::post('penerimaan/{id}', [PenerimaanController::class, 'store'])->name('penerimaan.store');
 
         Route::get('penyimpanan', [PenyimpananController::class, 'index'])->name('penyimpanan.index');
         Route::patch('penyimpanan/{barang}', [PenyimpananController::class, 'update'])->name('penyimpanan.update');
+    });
 
+    // Packing (Picker): pengambilan barang untuk pesanan
+    Route::middleware('role:picker')->group(function () {
         Route::get('pengambilan', [PengambilanController::class, 'index'])->name('pengambilan.index');
         Route::post('pengambilan/{pesanan}', [PengambilanController::class, 'store'])->name('pengambilan.store');
+    });
 
+    // Pengemasan & Pengiriman
+    Route::middleware('role:pengiriman')->group(function () {
         Route::get('pengemasan', [PengemasanController::class, 'index'])->name('pengemasan.index');
         Route::post('pengemasan/{pesanan}', [PengemasanController::class, 'store'])->name('pengemasan.store');
 

@@ -41,4 +41,10 @@ class Pesanan extends Model
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');
     }
+
+    /** Jejak proses pesanan, urut dari yang paling awal. */
+    public function riwayat(): HasMany
+    {
+        return $this->hasMany(RiwayatPesanan::class)->orderBy('waktu')->orderBy('id');
+    }
 }

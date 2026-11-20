@@ -31,6 +31,9 @@ class User extends Authenticatable
      */
     protected $table = 'users';
 
+    /** Peran yang berlaku. (`petugas` adalah peran lama, hanya tersisa untuk akun yang belum dialihkan.) */
+    public const PERAN = ['admin', 'pengadaan', 'gudang', 'picker', 'pengiriman', 'manajemen'];
+
     protected $hidden = [
         'password',
         'remember_token',

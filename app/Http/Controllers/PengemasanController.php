@@ -29,7 +29,7 @@ class PengemasanController extends Controller
     public function store(PengemasanRequest $request, string $pesanan): RedirectResponse
     {
         try {
-            $data = $this->pesanan->majukan($pesanan, 'dikemas', ['jumlah_koli' => $request->validated('jumlah_koli')]);
+            $data = $this->pesanan->majukan($pesanan, 'dikemas', $request->user()->id, ['jumlah_koli' => $request->validated('jumlah_koli')]);
         } catch (AlurPesananException $e) {
             return back()->with('error', $e->getMessage());
         }

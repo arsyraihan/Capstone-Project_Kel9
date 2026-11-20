@@ -9,6 +9,7 @@ import PageHeader from '@/components/PageHeader';
 import RowActions from '@/components/RowActions';
 import SelectInput from '@/components/SelectInput';
 import StatusBadge from '@/components/StatusBadge';
+import useAuth from '@/hooks/useAuth';
 import { formatTanggal } from '@/lib/format';
 import { Paginated, Pesanan } from '@/types';
 
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export default function Index({ pesanan, daftarStatus, filters }: Props) {
+    // Hanya Staf Pengadaan & CO yang boleh membuat/mengubah/membatalkan pesanan; peran lain melihat saja.
+    const bisaKelola = useAuth().is('pengadaan');
     const [batal, setBatal] = useState<Pesanan | null>(null);
     const [processing, setProcessing] = useState(false);
 
@@ -47,10 +50,12 @@ export default function Index({ pesanan, daftarStatus, filters }: Props) {
     return (
         <AdminLayout title="Pesanan">
             <PageHeader title="Pesanan Pelanggan" breadcrumbs={[{ label: 'Transaksi' }, { label: 'Pesanan' }]}>
-                <LinkButton href="/pesanan/create">
-                    <Plus className="size-4" />
-                    Buat Pesanan
-                </LinkButton>
+                {bisaKelola && (
+                    <LinkButton href="/pesanan/create">
+                        <Plus className="size-4" />
+                        Buat Pesanan
+                    </LinkButton>
+                )}
             </PageHeader>
 
             <DataTable
@@ -82,8 +87,8 @@ export default function Index({ pesanan, daftarStatus, filters }: Props) {
                 actions={(r) => (
                     <RowActions
                         showHref={`/pesanan/${r.id}`}
-                        editHref={r.status === 'baru' ? `/pesanan/${r.id}/edit` : undefined}
-                        onBatal={r.status === 'baru' ? () => setBatal(r) : undefined}
+                        editHref={bisaKelola && r.status === 'baru' ? `/pesanan/${r.id}/edit` : undefined}
+                        onBatal={bisaKelola && r.status === 'baru' ? () => setBatal(r) : undefined}
                     />
                 )}
             />

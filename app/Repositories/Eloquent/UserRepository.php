@@ -5,8 +5,10 @@ namespace App\Repositories\Eloquent;
 use App\Models\MutasiStok;
 use App\Models\Pembelian;
 use App\Models\Pesanan;
+use App\Models\RiwayatPesanan;
 use App\Models\User;
 use App\Repositories\Interfaces\UserRepositoryInterface;
+use Illuminate\Support\Facades\DB;
 
 class UserRepository extends BaseRepository implements UserRepositoryInterface
 {
@@ -23,6 +25,17 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
     {
         return Pembelian::where('dibuat_oleh', $id)->orWhere('diterima_oleh', $id)->exists()
             || Pesanan::where('dibuat_oleh', $id)->exists()
-            || MutasiStok::where('user_id', $id)->exists();
+            || MutasiStok::where('user_id', $id)->exists()
+            || RiwayatPesanan::where('user_id', $id)->exists();
+    }
+
+    public function hitungPerPeran(): array
+    {
+        return User::query()
+            ->select('role', DB::raw('count(*) as jumlah'))
+            ->groupBy('role')
+            ->pluck('jumlah', 'role')
+            ->map(fn ($n) => (int) $n)
+            ->all();
     }
 }

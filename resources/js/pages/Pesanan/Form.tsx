@@ -62,7 +62,7 @@ export default function Form({ pesanan, pelanggan, barang, hariIni }: Props) {
                 <ItemRows items={data.items} onChange={(items) => setData('items', items)} barang={barang} errors={errors as Record<string, string | undefined>} showStok />
 
                 <p className="text-xs text-gray-500">
-                    Stok berkurang saat pesanan diambil oleh petugas gudang, bukan saat pesanan dibuat. Jumlah berwarna merah berarti melebihi stok yang tersedia saat ini.
+                    Stok berkurang saat pesanan diambil oleh Staf Packing (Picker), bukan saat pesanan dibuat. Jumlah berwarna merah berarti melebihi stok yang tersedia saat ini.
                 </p>
             </FormCard>
         </AdminLayout>

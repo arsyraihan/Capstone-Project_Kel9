@@ -1,4 +1,5 @@
-export type Role = 'admin' | 'petugas';
+/** `petugas` adalah peran lama; hanya tersisa untuk akun yang belum dialihkan oleh admin. */
+export type Role = 'admin' | 'pengadaan' | 'gudang' | 'picker' | 'pengiriman' | 'manajemen' | 'petugas';
 
 export interface AuthUser {
     id: number;
@@ -129,4 +130,13 @@ export interface Pesanan {
     pelanggan?: Pelanggan;
     detail?: DetailItem[];
     pembuat?: { id: number; name: string } | null;
+    riwayat?: RiwayatPesanan[];
+}
+
+/** Jejak proses pesanan: siapa mengubah status menjadi apa, dan kapan. */
+export interface RiwayatPesanan {
+    id: number;
+    status: StatusPesanan;
+    waktu: string;
+    user?: { id: number; name: string; role: Role } | null;
 }

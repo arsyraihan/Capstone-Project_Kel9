@@ -18,4 +18,7 @@ interface PembelianRepositoryInterface extends RepositoryInterface
 
     /** Ubah PO dan ganti seluruh item-itemnya dalam satu transaksi. */
     public function updateWithDetail(int|string $id, array $header, array $items): Pembelian;
+
+    /** Jumlah PO per status, mis. ['dipesan' => 2, 'diterima' => 7]. */
+    public function hitungPerStatus(): array;
 }

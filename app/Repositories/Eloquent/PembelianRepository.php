@@ -77,4 +77,14 @@ class PembelianRepository extends BaseRepository implements PembelianRepositoryI
             return $po;
         });
     }
+
+    public function hitungPerStatus(): array
+    {
+        return Pembelian::query()
+            ->select('status', DB::raw('count(*) as jumlah'))
+            ->groupBy('status')
+            ->pluck('jumlah', 'status')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+    }
 }

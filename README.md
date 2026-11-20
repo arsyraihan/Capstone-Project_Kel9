@@ -76,10 +76,28 @@ Buka **http://localhost:8000** di browser.
 
 ## Akun Demo
 
-| Peran | Email | Password |
-|---|---|---|
-| Admin | `admin@inventaris.test` | `password` |
-| Petugas | `petugas@inventaris.test` | `password` |
+| Peran | Email | Password | Tugas |
+|---|---|---|---|
+| Admin | `admin@inventaris.test` | `password` | Akun pengguna dan master data |
+| Staf Pengadaan & CO | `pengadaan@inventaris.test` | `password` | PO ke pemasok, pesanan pelanggan |
+| Staf Gudang | `gudang@inventaris.test` | `password` | Penerimaan, penyimpanan, stok |
+| Packing (Picker) | `picker@inventaris.test` | `password` | Pengambilan barang di rak |
+| Pengemasan & Pengiriman | `pengiriman@inventaris.test` | `password` | Kemas, kirim, Surat Jalan, selesai |
+| Manajemen User | `manajemen@inventaris.test` | `password` | Uang masuk dan keluar (menyusul di fase berikutnya) |
+
+> Akun `petugas@inventaris.test` (peran lama) tetap ada di database bersama sampai diubah oleh admin
+> lewat menu **Pengguna** ke salah satu peran di atas.
+
+### Untuk database yang sudah berisi data contoh
+
+Jalankan sekali setelah `php artisan migrate`:
+
+```bash
+php artisan db:seed --class=SinkronPeranSeeder
+```
+
+Seeder ini membuat akun enam peran dan menyesuaikan pelaksana pada transaksi contoh. Data buatan anggota
+kelompok setelah 6 Nov 2026 tidak diubah.
 
 ## Build untuk Produksi
 ```bash

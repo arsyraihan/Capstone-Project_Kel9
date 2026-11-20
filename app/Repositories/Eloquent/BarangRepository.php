@@ -68,4 +68,9 @@ class BarangRepository extends BaseRepository implements BarangRepositoryInterfa
             'di_bawah_minimum' => Barang::whereColumn('stok', '<=', 'stok_minimum')->count(),
         ];
     }
+
+    public function jumlahTanpaRak(): int
+    {
+        return Barang::whereNull('rak_id')->count();
+    }
 }

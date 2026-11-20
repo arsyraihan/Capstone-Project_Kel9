@@ -6,6 +6,7 @@ import Button, { LinkButton } from '@/components/Button';
 import ConfirmModal from '@/components/ConfirmModal';
 import PageHeader from '@/components/PageHeader';
 import StatusBadge from '@/components/StatusBadge';
+import useAuth from '@/hooks/useAuth';
 import { formatTanggal } from '@/lib/format';
 import { Pembelian } from '@/types';
 
@@ -21,7 +22,9 @@ function Info({ label, children }: { label: string; children: React.ReactNode })
 export default function Show({ pembelian }: { pembelian: Pembelian }) {
     const [hapus, setHapus] = useState(false);
     const detail = pembelian.detail ?? [];
-    const dapatDiubah = pembelian.status === 'dipesan';
+    // Hanya Staf Pengadaan & CO yang boleh mengubah/menghapus PO (selama masih dipesan).
+    const { is } = useAuth();
+    const dapatDiubah = pembelian.status === 'dipesan' && is('pengadaan');
 
     return (
         <AdminLayout title={`PO ${pembelian.no_po}`}>

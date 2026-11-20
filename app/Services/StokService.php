@@ -7,6 +7,7 @@ use App\Models\Barang;
 use App\Models\MutasiStok;
 use App\Models\Pembelian;
 use App\Models\Pesanan;
+use App\Models\RiwayatPesanan;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -123,6 +124,14 @@ class StokService
             }
 
             $pesanan->update(['status' => 'diambil']);
+
+            // Jejak pelaksana: siapa yang mengambil barang, dan kapan.
+            RiwayatPesanan::create([
+                'pesanan_id' => $pesanan->id,
+                'status' => 'diambil',
+                'user_id' => $userId,
+                'waktu' => $waktu,
+            ]);
 
             return $pesanan;
         });

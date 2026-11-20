@@ -25,9 +25,15 @@ use Illuminate\Database\Seeder;
  */
 class TransaksiSeeder extends Seeder
 {
-    private User $admin;
+    // Pelaksana sesuai peran: pengadaan membuat PO/pesanan, gudang menerima, picker mengambil,
+    // pengiriman mengemas dan mengirim.
+    private User $pengadaan;
 
-    private User $petugas;
+    private User $gudang;
+
+    private User $picker;
+
+    private User $pengiriman;
 
     private array $pemasokIds = [];
 
@@ -54,8 +60,10 @@ class TransaksiSeeder extends Seeder
 
         mt_srand(20260101); // hasil acak selalu sama
 
-        $this->admin = User::where('email', 'admin@inventaris.test')->firstOrFail();
-        $this->petugas = User::where('email', 'petugas@inventaris.test')->firstOrFail();
+        $this->pengadaan = User::where('email', 'pengadaan@inventaris.test')->firstOrFail();
+        $this->gudang = User::where('email', 'gudang@inventaris.test')->firstOrFail();
+        $this->picker = User::where('email', 'picker@inventaris.test')->firstOrFail();
+        $this->pengiriman = User::where('email', 'pengiriman@inventaris.test')->firstOrFail();
         $this->pemasokIds = Pemasok::orderBy('id')->pluck('id')->all();
         $this->pelangganIds = Pelanggan::orderBy('id')->pluck('id')->all();
 
@@ -133,7 +141,7 @@ class TransaksiSeeder extends Seeder
         }
 
         $po = $this->buatPo($waktuTerima->copy()->subDays(2), $items, 'Pengiriman reguler dari pemasok');
-        $this->stok->terimaPembelian($po, $this->petugas->id, null, $waktuTerima);
+        $this->stok->terimaPembelian($po, $this->gudang->id, null, $waktuTerima);
     }
 
     /** @param  array<int, int>  $items  barang_id => jumlah */
@@ -155,7 +163,7 @@ class TransaksiSeeder extends Seeder
             'pemasok_id' => $pemasokId,
             'status' => 'dipesan',
             'keterangan' => $keterangan,
-            'dibuat_oleh' => $this->admin->id,
+            'dibuat_oleh' => $this->pengadaan->id,
         ], $this->keDetail($items));
     }
 
@@ -208,46 +216,58 @@ class TransaksiSeeder extends Seeder
 
         $pelangganId = $this->pelangganIds[$this->urutPelanggan++ % count($this->pelangganIds)];
 
+        // Pesanan dibuat Staf Pengadaan & CO sebelum barang diambil (beberapa jam sebelumnya).
+        $dibuat = $waktu->copy()->subHours(mt_rand(2, 20));
+
         $pesanan = $this->pesanan->createWithDetail([
-            'tanggal' => $waktu->copy()->subDays(mt_rand(0, 1))->toDateString(),
+            'tanggal' => $dibuat->toDateString(),
             'pelanggan_id' => $pelangganId,
             'status' => 'baru',
             'keterangan' => null,
-            'dibuat_oleh' => $this->admin->id,
-        ], $this->keDetail($items));
+            'dibuat_oleh' => $this->pengadaan->id,
+        ], $this->keDetail($items), $dibuat);
 
         if ($akhir === 'baru') {
             return;
         }
 
         if ($akhir === 'batal') {
-            $this->pesanan->batalkan($pesanan->id);
+            $this->pesanan->batalkan($pesanan->id, $this->pengadaan->id, $waktu);
 
             return;
         }
 
-        $this->stok->ambilPesanan($pesanan, $this->petugas->id, $waktu);
+        // Picker mengambil barang.
+        $this->stok->ambilPesanan($pesanan, $this->picker->id, $waktu);
         if ($akhir === 'diambil') {
             return;
         }
 
-        $this->pesanan->majukan($pesanan->id, 'dikemas', ['jumlah_koli' => mt_rand(1, 4)]);
+        // Pengemasan & Pengiriman: kemas, kirim, lalu selesai (masing-masing beberapa jam/hari kemudian).
+        $waktuKemas = $this->batasi($waktu->copy()->addHours(2));
+        $this->pesanan->majukan($pesanan->id, 'dikemas', $this->pengiriman->id, ['jumlah_koli' => mt_rand(1, 4)], $waktuKemas);
         if ($akhir === 'dikemas') {
             return;
         }
 
         $ekspedisi = ['JNE', 'J&T Express', 'SiCepat', 'Indah Cargo', 'Dakota Cargo'][mt_rand(0, 4)];
-        $tanggalKirim = $waktu->copy()->addDay();
-        $this->pesanan->majukan($pesanan->id, 'dikirim', [
+        $waktuKirim = $this->batasi($waktuKemas->copy()->addDay()->setTime(10, 0));
+        $this->pesanan->majukan($pesanan->id, 'dikirim', $this->pengiriman->id, [
             'ekspedisi' => $ekspedisi,
             'no_resi' => 'RESI'.mt_rand(10000000, 99999999),
-            'tanggal_kirim' => ($tanggalKirim->greaterThan(now()) ? now() : $tanggalKirim)->toDateString(),
-        ]);
+            'tanggal_kirim' => $waktuKirim->toDateString(),
+        ], $waktuKirim);
         if ($akhir === 'dikirim') {
             return;
         }
 
-        $this->pesanan->majukan($pesanan->id, 'selesai');
+        $this->pesanan->majukan($pesanan->id, 'selesai', $this->pengiriman->id, [], $this->batasi($waktuKirim->copy()->addDays(2)));
+    }
+
+    /** Waktu tidak boleh melewati saat ini. */
+    private function batasi(Carbon $waktu): Carbon
+    {
+        return $waktu->greaterThan(now()) ? now()->copy() : $waktu;
     }
 
     /** 2-4 barang acak, jumlah dibatasi setengah dari stok yang ada agar selalu cukup. */

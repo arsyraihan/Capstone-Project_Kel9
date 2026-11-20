@@ -6,6 +6,7 @@ import DataTable from '@/components/DataTable';
 import PageHeader from '@/components/PageHeader';
 import RowActions from '@/components/RowActions';
 import StatusBadge from '@/components/StatusBadge';
+import useAuth from '@/hooks/useAuth';
 import useHapus from '@/hooks/useHapus';
 import { formatTanggal } from '@/lib/format';
 import { Paginated, Pembelian } from '@/types';
@@ -17,14 +18,18 @@ interface Props {
 
 export default function Index({ pembelian, filters }: Props) {
     const hapus = useHapus<Pembelian>('/pengadaan');
+    // Hanya Staf Pengadaan & CO yang boleh membuat/mengubah PO; peran lain melihat saja.
+    const bisaKelola = useAuth().is('pengadaan');
 
     return (
         <AdminLayout title="Pengadaan">
             <PageHeader title="Pengadaan (Purchase Order)" breadcrumbs={[{ label: 'Transaksi' }, { label: 'Pengadaan' }]}>
-                <LinkButton href="/pengadaan/create">
-                    <Plus className="size-4" />
-                    Buat PO
-                </LinkButton>
+                {bisaKelola && (
+                    <LinkButton href="/pengadaan/create">
+                        <Plus className="size-4" />
+                        Buat PO
+                    </LinkButton>
+                )}
             </PageHeader>
 
             <DataTable
@@ -43,8 +48,8 @@ export default function Index({ pembelian, filters }: Props) {
                 actions={(r) => (
                     <RowActions
                         showHref={`/pengadaan/${r.id}`}
-                        editHref={r.status === 'dipesan' ? `/pengadaan/${r.id}/edit` : undefined}
-                        onDelete={r.status === 'dipesan' ? () => hapus.setTarget(r) : undefined}
+                        editHref={bisaKelola && r.status === 'dipesan' ? `/pengadaan/${r.id}/edit` : undefined}
+                        onDelete={bisaKelola && r.status === 'dipesan' ? () => hapus.setTarget(r) : undefined}
                     />
                 )}
             />

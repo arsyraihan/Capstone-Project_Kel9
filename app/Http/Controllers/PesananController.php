@@ -96,10 +96,10 @@ class PesananController extends Controller
         return redirect()->route('pesanan.index')->with('success', 'Pesanan berhasil diperbarui.');
     }
 
-    public function batal(string $id): RedirectResponse
+    public function batal(Request $request, string $id): RedirectResponse
     {
         try {
-            $pesanan = $this->pesanan->batalkan($id);
+            $pesanan = $this->pesanan->batalkan($id, $request->user()->id);
         } catch (AlurPesananException $e) {
             return back()->with('error', $e->getMessage());
         }

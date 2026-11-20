@@ -5,6 +5,7 @@ import FormCard from '@/components/FormCard';
 import FormInput from '@/components/FormInput';
 import PageHeader from '@/components/PageHeader';
 import SelectInput from '@/components/SelectInput';
+import { daftarPeran, namaPeran, tugasPeran } from '@/lib/peran';
 import { Pengguna, Role } from '@/types';
 
 export default function Form({ pengguna }: { pengguna: Pengguna | null }) {
@@ -12,7 +13,7 @@ export default function Form({ pengguna }: { pengguna: Pengguna | null }) {
         name: pengguna?.name ?? '',
         email: pengguna?.email ?? '',
         password: '',
-        role: pengguna?.role ?? 'petugas',
+        role: pengguna?.role ?? 'gudang',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -43,10 +44,21 @@ export default function Form({ pengguna }: { pengguna: Pengguna | null }) {
                     error={errors.password}
                     hint={pengguna ? 'Kosongkan jika tidak ingin mengganti kata sandi.' : 'Minimal 8 karakter.'}
                 />
-                <SelectInput label="Role" name="role" value={data.role} onChange={(e) => setData('role', e.target.value as Role)} error={errors.role}>
-                    <option value="admin">Admin</option>
-                    <option value="petugas">Petugas Gudang</option>
-                </SelectInput>
+                <div className="space-y-1">
+                    <SelectInput label="Peran" name="role" value={data.role} onChange={(e) => setData('role', e.target.value as Role)} error={errors.role}>
+                        {data.role === 'petugas' && (
+                            <option value="petugas" disabled>
+                                {namaPeran.petugas} - pilih peran baru
+                            </option>
+                        )}
+                        {daftarPeran.map((p) => (
+                            <option key={p} value={p}>
+                                {namaPeran[p]}
+                            </option>
+                        ))}
+                    </SelectInput>
+                    <p className="text-xs text-gray-500">{tugasPeran[data.role]}</p>
+                </div>
             </FormCard>
         </AdminLayout>
     );

@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 class RoleMiddleware
 {
     /**
-     * Contoh pemakaian: role:admin atau role:admin,petugas
+     * Contoh pemakaian: role:admin atau role:pengadaan,admin,manajemen
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {

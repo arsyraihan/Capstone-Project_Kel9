@@ -3,13 +3,12 @@ import { LogOut, Menu } from 'lucide-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import Sidebar from '@/components/Sidebar';
+import { namaPeran } from '@/lib/peran';
 import { SharedData } from '@/types';
 
 interface Props {
     title: string;
 }
-
-const namaRole = { admin: 'Admin', petugas: 'Petugas Gudang' } as const;
 
 export default function AdminLayout({ title, children }: PropsWithChildren<Props>) {
     const { auth, flash, name } = usePage<SharedData>().props;
@@ -43,7 +42,7 @@ export default function AdminLayout({ title, children }: PropsWithChildren<Props
                     <div className="flex items-center gap-4">
                         <div className="text-right text-sm leading-tight">
                             <div className="font-medium text-gray-900">{auth.user?.name}</div>
-                            <div className="text-xs text-gray-500">{auth.user ? namaRole[auth.user.role] : ''}</div>
+                            <div className="text-xs text-gray-500">{auth.user ? namaPeran[auth.user.role] : ''}</div>
                         </div>
                         <button
                             type="button"

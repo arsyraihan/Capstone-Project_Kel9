@@ -31,7 +31,8 @@ interface MenuGroup {
     items: MenuItem[];
 }
 
-const semua: Role[] = ['admin', 'petugas'];
+// Semua peran (termasuk peran lama `petugas`) boleh membuka Dashboard dan Stok.
+const semua: Role[] = ['admin', 'pengadaan', 'gudang', 'picker', 'pengiriman', 'manajemen', 'petugas'];
 
 const menu: MenuGroup[] = [
     {
@@ -49,20 +50,20 @@ const menu: MenuGroup[] = [
     {
         title: 'Transaksi',
         items: [
-            { label: 'Pengadaan', href: '/pengadaan', icon: ShoppingCart, roles: ['admin'] },
-            { label: 'Penerimaan', href: '/penerimaan', icon: ArrowDownToLine, roles: semua },
-            { label: 'Penyimpanan', href: '/penyimpanan', icon: Warehouse, roles: semua },
+            { label: 'Pengadaan', href: '/pengadaan', icon: ShoppingCart, roles: ['pengadaan', 'admin', 'manajemen'] },
+            { label: 'Pesanan', href: '/pesanan', icon: ClipboardList, roles: ['pengadaan', 'admin', 'manajemen'] },
+            { label: 'Penerimaan', href: '/penerimaan', icon: ArrowDownToLine, roles: ['gudang'] },
+            { label: 'Penyimpanan', href: '/penyimpanan', icon: Warehouse, roles: ['gudang'] },
             { label: 'Stok', href: '/stok', icon: Boxes, roles: semua },
-            { label: 'Pesanan', href: '/pesanan', icon: ClipboardList, roles: ['admin'] },
-            { label: 'Pengambilan', href: '/pengambilan', icon: PackageOpen, roles: semua },
-            { label: 'Pengemasan', href: '/pengemasan', icon: PackageCheck, roles: semua },
-            { label: 'Pengiriman', href: '/pengiriman', icon: Truck, roles: semua },
+            { label: 'Pengambilan', href: '/pengambilan', icon: PackageOpen, roles: ['picker'] },
+            { label: 'Pengemasan', href: '/pengemasan', icon: PackageCheck, roles: ['pengiriman'] },
+            { label: 'Pengiriman', href: '/pengiriman', icon: Truck, roles: ['pengiriman'] },
         ],
     },
     {
         title: 'Lainnya',
         items: [
-            { label: 'Laporan', href: '/laporan', icon: FileBarChart, roles: ['admin'] },
+            { label: 'Laporan', href: '/laporan', icon: FileBarChart, roles: ['admin', 'pengadaan', 'gudang'] },
             { label: 'Pengguna', href: '/pengguna', icon: UserCog, roles: ['admin'] },
         ],
     },
@@ -97,6 +98,7 @@ export default function Sidebar({ open, onClose }: Props) {
 
                 <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
                     {menu.map((group, index) => {
+                        // Menu disaring menurut peran yang sedang login.
                         const items = group.items.filter((item) => role && item.roles.includes(role));
 
                         if (items.length === 0) {

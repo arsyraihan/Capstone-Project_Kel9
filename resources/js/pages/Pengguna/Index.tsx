@@ -34,7 +34,7 @@ export default function Index({ pengguna, filters }: Props) {
                 columns={[
                     { header: 'Nama', cell: (r) => <span className="font-medium">{r.name}</span> },
                     { header: 'Email', cell: (r) => r.email },
-                    { header: 'Role', cell: (r) => <StatusBadge status={r.role} /> },
+                    { header: 'Peran', cell: (r) => <StatusBadge status={r.role} /> },
                 ]}
                 actions={(r) => <RowActions editHref={`/pengguna/${r.id}/edit`} onDelete={() => hapus.setTarget(r)} />}
             />

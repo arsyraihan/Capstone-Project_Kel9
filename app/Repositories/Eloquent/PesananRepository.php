@@ -4,10 +4,13 @@ namespace App\Repositories\Eloquent;
 
 use App\Exceptions\AlurPesananException;
 use App\Models\Pesanan;
+use App\Models\RiwayatPesanan;
 use App\Repositories\Interfaces\PesananRepositoryInterface;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 class PesananRepository extends BaseRepository implements PesananRepositoryInterface
@@ -21,6 +24,12 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
     public function __construct()
     {
         parent::__construct(new Pesanan());
+    }
+
+    /** Halaman detail juga memuat jejak proses (riwayat) beserta pelakunya. */
+    public function find(int|string $id): Model
+    {
+        return $this->query()->with('riwayat.user')->findOrFail($id);
     }
 
     /** Cari berdasarkan nomor pesanan atau nama pelanggan. */
@@ -56,13 +65,15 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
         return $prefix.str_pad((string) $urut, 3, '0', STR_PAD_LEFT);
     }
 
-    public function createWithDetail(array $header, array $items): Pesanan
+    public function createWithDetail(array $header, array $items, ?CarbonInterface $waktu = null): Pesanan
     {
-        return DB::transaction(function () use ($header, $items) {
+        return DB::transaction(function () use ($header, $items, $waktu) {
             $header['no_pesanan'] = $this->nomorBerikutnya($header['tanggal']);
 
             $pesanan = Pesanan::create($header);
             $pesanan->detail()->createMany($items);
+
+            $this->catatRiwayat($pesanan, 'baru', (int) $header['dibuat_oleh'], $waktu);
 
             return $pesanan;
         });
@@ -85,9 +96,9 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
         });
     }
 
-    public function majukan(int|string $id, string $statusBaru, array $data = []): Pesanan
+    public function majukan(int|string $id, string $statusBaru, int $userId, array $data = [], ?CarbonInterface $waktu = null): Pesanan
     {
-        return DB::transaction(function () use ($id, $statusBaru, $data) {
+        return DB::transaction(function () use ($id, $statusBaru, $userId, $data, $waktu) {
             $pesanan = Pesanan::lockForUpdate()->findOrFail($id);
 
             $alur = Pesanan::ALUR_STATUS;
@@ -101,14 +112,15 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
             }
 
             $pesanan->update(['status' => $statusBaru] + $data);
+            $this->catatRiwayat($pesanan, $statusBaru, $userId, $waktu);
 
             return $pesanan;
         });
     }
 
-    public function batalkan(int|string $id): Pesanan
+    public function batalkan(int|string $id, int $userId, ?CarbonInterface $waktu = null): Pesanan
     {
-        return DB::transaction(function () use ($id) {
+        return DB::transaction(function () use ($id, $userId, $waktu) {
             $pesanan = Pesanan::lockForUpdate()->findOrFail($id);
 
             if ($pesanan->status !== 'baru') {
@@ -116,6 +128,7 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
             }
 
             $pesanan->update(['status' => 'batal']);
+            $this->catatRiwayat($pesanan, 'batal', $userId, $waktu);
 
             return $pesanan;
         });
@@ -126,8 +139,28 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
         return Pesanan::whereIn('status', ['baru', 'diambil', 'dikemas'])->count();
     }
 
+    public function hitungPerStatus(): array
+    {
+        return Pesanan::query()
+            ->select('status', DB::raw('count(*) as jumlah'))
+            ->groupBy('status')
+            ->pluck('jumlah', 'status')
+            ->map(fn ($n) => (int) $n)
+            ->all();
+    }
+
     public function terbaru(int $limit = 5): Collection
     {
         return $this->query()->orderByDesc('id')->limit($limit)->get();
+    }
+
+    private function catatRiwayat(Pesanan $pesanan, string $status, int $userId, ?CarbonInterface $waktu): void
+    {
+        RiwayatPesanan::create([
+            'pesanan_id' => $pesanan->id,
+            'status' => $status,
+            'user_id' => $userId,
+            'waktu' => $waktu ?? now(),
+        ]);
     }
 }

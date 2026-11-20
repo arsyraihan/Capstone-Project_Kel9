@@ -32,7 +32,7 @@ class PengirimanController extends Controller
     public function kirim(PengirimanRequest $request, string $pesanan): RedirectResponse
     {
         try {
-            $data = $this->pesanan->majukan($pesanan, 'dikirim', $request->validated() + ['tanggal_kirim' => now()->toDateString()]);
+            $data = $this->pesanan->majukan($pesanan, 'dikirim', $request->user()->id, $request->validated() + ['tanggal_kirim' => now()->toDateString()]);
         } catch (AlurPesananException $e) {
             return back()->with('error', $e->getMessage());
         }
@@ -41,10 +41,10 @@ class PengirimanController extends Controller
     }
 
     /** "Tandai Selesai": status menjadi `selesai`. */
-    public function selesai(string $pesanan): RedirectResponse
+    public function selesai(Request $request, string $pesanan): RedirectResponse
     {
         try {
-            $data = $this->pesanan->majukan($pesanan, 'selesai');
+            $data = $this->pesanan->majukan($pesanan, 'selesai', $request->user()->id);
         } catch (AlurPesananException $e) {
             return back()->with('error', $e->getMessage());
         }
