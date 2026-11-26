@@ -9,7 +9,12 @@ class Pelanggan extends Model
 {
     protected $table = 'pelanggan';
 
-    protected $fillable = ['kode_pelanggan', 'nama', 'telepon', 'alamat'];
+    protected $fillable = ['kode_pelanggan', 'nama', 'telepon', 'alamat', 'termin_hari'];
+
+    protected function casts(): array
+    {
+        return ['termin_hari' => 'integer'];
+    }
 
     public function pesanan(): HasMany
     {

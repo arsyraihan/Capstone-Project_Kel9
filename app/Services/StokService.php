@@ -20,13 +20,17 @@ use Illuminate\Support\Facades\DB;
 class StokService
 {
     /**
-     * Penerimaan barang dari PO: stok bertambah, mutasi `masuk` dicatat, status PO menjadi `diterima`.
+     * Penerimaan barang dari PO: stok bertambah sebanyak yang DATANG, mutasi `masuk` dicatat,
+     * status PO menjadi `diterima`, lalu nilai hutang dan jatuh temponya dihitung.
+     *
+     * @param  array<int|string, int|string>|null  $diterima  detail_pembelian.id => jumlah datang;
+     *                                                       null = semua datang sesuai PO.
      *
      * @throws StokException
      */
-    public function terimaPembelian(Pembelian $po, int $userId, ?string $keterangan = null, ?CarbonInterface $waktu = null): Pembelian
+    public function terimaPembelian(Pembelian $po, int $userId, ?string $keterangan = null, ?CarbonInterface $waktu = null, ?array $diterima = null): Pembelian
     {
-        return DB::transaction(function () use ($po, $userId, $keterangan, $waktu) {
+        return DB::transaction(function () use ($po, $userId, $keterangan, $waktu, $diterima) {
             $waktu ??= now();
 
             $po = Pembelian::query()->lockForUpdate()->findOrFail($po->id);
@@ -35,10 +39,31 @@ class StokService
                 throw new StokException("PO {$po->no_po} sudah diterima sebelumnya.");
             }
 
+            $detail = $po->detail()->get();
+            $datang = [];
+            foreach ($detail as $baris) {
+                $jumlah = $diterima === null ? $baris->jumlah : ($diterima[$baris->id] ?? null);
+
+                if ($jumlah === null || (int) $jumlah < 0 || (int) $jumlah > $baris->jumlah) {
+                    throw new StokException("Jumlah datang harus diisi antara 0 dan jumlah yang dipesan (PO {$po->no_po}).");
+                }
+                $datang[$baris->id] = (int) $jumlah;
+            }
+
+            if (array_sum($datang) === 0) {
+                throw new StokException('Minimal satu barang harus datang (jumlah lebih dari 0).');
+            }
+
             // Jumlah per barang (jaga-jaga bila ada barang ganda), urut id agar kunci tidak saling menunggu.
-            $jumlahPerBarang = $po->detail()->get()->groupBy('barang_id')->map->sum('jumlah')->sortKeys();
+            $jumlahPerBarang = $detail->groupBy('barang_id')
+                ->map(fn ($grup) => $grup->sum(fn ($d) => $datang[$d->id]))
+                ->sortKeys();
 
             foreach ($jumlahPerBarang as $barangId => $jumlah) {
+                if ($jumlah === 0) {
+                    continue;
+                }
+
                 $barang = Barang::query()->lockForUpdate()->findOrFail($barangId);
                 $barang->stok += $jumlah;
                 $barang->save();
@@ -55,19 +80,82 @@ class StokService
                 ]);
             }
 
+            $total = 0;
+            $jenisKurang = 0;
+            foreach ($detail as $baris) {
+                $baris->update(['jumlah_diterima' => $datang[$baris->id]]);
+                $total += $datang[$baris->id] * $baris->harga_satuan;
+                $jenisKurang += $datang[$baris->id] < $baris->jumlah ? 1 : 0;
+            }
+
             $catatan = $po->keterangan;
             if ($keterangan !== null && trim($keterangan) !== '') {
                 $catatan = trim(($catatan ? $catatan."\n" : '').'Penerimaan: '.trim($keterangan));
             }
+            if ($jenisKurang > 0) {
+                $catatan = trim(($catatan ? $catatan."\n" : '')."Kurang kirim dari pemasok: {$jenisKurang} jenis barang.");
+            }
+
+            $jatuhTempo = match ($po->cara_bayar) {
+                'tempo' => $waktu->copy()->addDays($po->pemasok->termin_hari)->toDateString(),
+                'konsinyasi' => null, // kewajiban timbul saat barang terjual
+                default => $waktu->toDateString(),
+            };
 
             $po->update([
                 'status' => 'diterima',
                 'tanggal_terima' => $waktu->toDateString(),
                 'diterima_oleh' => $userId,
                 'keterangan' => $catatan,
+                'total' => $total,
+                'jatuh_tempo' => $jatuhTempo,
             ]);
 
             return $po;
+        });
+    }
+
+    /**
+     * Retur barang titipan ke pemiliknya: stok berkurang dan mutasi `keluar` dicatat.
+     * Retur bukan penjualan, jadi tidak ikut ditagih.
+     *
+     * @return string nomor referensi retur (RTR-YYYYMMDD-001)
+     *
+     * @throws StokException
+     */
+    public function returKonsinyasi(int $barangId, int $jumlah, int $userId, ?string $keterangan = null): string
+    {
+        return DB::transaction(function () use ($barangId, $jumlah, $userId, $keterangan) {
+            $barang = Barang::query()->lockForUpdate()->findOrFail($barangId);
+
+            if (! $barang->isKonsinyasi()) {
+                throw new StokException("{$barang->sku} bukan barang konsinyasi.");
+            }
+            if ($jumlah < 1 || $jumlah > $barang->stok) {
+                throw new StokException("Jumlah retur {$barang->sku} harus antara 1 dan stok yang ada ({$barang->stok}).");
+            }
+
+            $prefix = 'RTR-'.now()->format('Ymd').'-';
+            DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', [$prefix]);
+            $terakhir = MutasiStok::where('referensi', 'like', $prefix.'%')->max('referensi');
+            $urut = $terakhir ? ((int) substr($terakhir, strlen($prefix))) + 1 : 1;
+            $nomor = $prefix.str_pad((string) $urut, 3, '0', STR_PAD_LEFT);
+
+            $barang->stok -= $jumlah;
+            $barang->save();
+
+            MutasiStok::create([
+                'barang_id' => $barang->id,
+                'tanggal' => now(),
+                'jenis' => 'keluar',
+                'jumlah' => $jumlah,
+                'stok_akhir' => $barang->stok,
+                'referensi' => $nomor,
+                'keterangan' => trim('Retur konsinyasi ke pemasok. '.$keterangan),
+                'user_id' => $userId,
+            ]);
+
+            return $nomor;
         });
     }
 

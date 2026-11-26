@@ -69,6 +69,11 @@ class BarangRepository extends BaseRepository implements BarangRepositoryInterfa
         ];
     }
 
+    public function konsinyasiBerstok(): Collection
+    {
+        return Barang::with('pemasok')->where('jenis_stok', 'konsinyasi')->where('stok', '>', 0)->orderBy('sku')->get();
+    }
+
     public function jumlahTanpaRak(): int
     {
         return Barang::whereNull('rak_id')->count();

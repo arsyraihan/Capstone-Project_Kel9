@@ -20,4 +20,7 @@ interface MutasiStokRepositoryInterface extends RepositoryInterface
 
     /** Daftar mutasi untuk laporan: satu jenis (masuk/keluar), difilter rentang tanggal, urut tanggal naik. */
     public function laporan(string $jenis, ?string $dari = null, ?string $sampai = null): Collection;
+
+    /** Retur konsinyasi (referensi RTR-...) paling baru. */
+    public function returTerbaru(int $limit = 10): \Illuminate\Database\Eloquent\Collection;
 }

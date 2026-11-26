@@ -6,6 +6,7 @@ use App\Exceptions\AlurPesananException;
 use App\Models\Pesanan;
 use App\Models\RiwayatPesanan;
 use App\Repositories\Interfaces\PesananRepositoryInterface;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,10 +27,16 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
         parent::__construct(new Pesanan());
     }
 
-    /** Halaman detail juga memuat jejak proses (riwayat) beserta pelakunya. */
+    /** Setiap pesanan membawa jumlah yang sudah dibayar. */
+    protected function query(): Builder
+    {
+        return parent::query()->withSum('pembayaran as dibayar', 'jumlah');
+    }
+
+    /** Halaman detail juga memuat jejak proses (riwayat) dan riwayat pembayaran. */
     public function find(int|string $id): Model
     {
-        return $this->query()->with('riwayat.user')->findOrFail($id);
+        return $this->query()->with(['riwayat.user', 'pembayaran.user'])->findOrFail($id);
     }
 
     /** Cari berdasarkan nomor pesanan atau nama pelanggan. */
@@ -70,7 +77,7 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
         return DB::transaction(function () use ($header, $items, $waktu) {
             $header['no_pesanan'] = $this->nomorBerikutnya($header['tanggal']);
 
-            $pesanan = Pesanan::create($header);
+            $pesanan = Pesanan::create($header + ['total' => $this->hitungTotal($items)]);
             $pesanan->detail()->createMany($items);
 
             $this->catatRiwayat($pesanan, 'baru', (int) $header['dibuat_oleh'], $waktu);
@@ -88,7 +95,7 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
                 throw new AlurPesananException("Pesanan {$pesanan->no_pesanan} berstatus {$pesanan->status} sehingga tidak dapat diubah. Hanya pesanan berstatus baru yang boleh diubah.");
             }
 
-            $pesanan->update($header);
+            $pesanan->update($header + ['total' => $this->hitungTotal($items)]);
             $pesanan->detail()->delete();
             $pesanan->detail()->createMany($items);
 
@@ -109,6 +116,14 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
                 throw new AlurPesananException(
                     "Pesanan {$pesanan->no_pesanan} berstatus {$pesanan->status} sehingga tidak dapat diubah menjadi {$statusBaru}. Status hanya boleh maju satu langkah sesuai urutan."
                 );
+            }
+
+            // Piutang timbul saat dikirim: jatuh tempo = tanggal kirim (+ termin pelanggan bila tempo).
+            if ($statusBaru === 'dikirim') {
+                $kirim = Carbon::parse($data['tanggal_kirim'] ?? now());
+                $termin = $pesanan->cara_bayar === 'tempo' ? $pesanan->pelanggan->termin_hari : 0;
+                $data['tanggal_kirim'] = $kirim->toDateString();
+                $data['jatuh_tempo'] = $kirim->addDays($termin)->toDateString();
             }
 
             $pesanan->update(['status' => $statusBaru] + $data);
@@ -152,6 +167,11 @@ class PesananRepository extends BaseRepository implements PesananRepositoryInter
     public function terbaru(int $limit = 5): Collection
     {
         return $this->query()->orderByDesc('id')->limit($limit)->get();
+    }
+
+    private function hitungTotal(array $items): float
+    {
+        return array_sum(array_map(fn (array $i) => $i['jumlah'] * (float) ($i['harga_satuan'] ?? 0), $items));
     }
 
     private function catatRiwayat(Pesanan $pesanan, string $status, int $userId, ?CarbonInterface $waktu): void

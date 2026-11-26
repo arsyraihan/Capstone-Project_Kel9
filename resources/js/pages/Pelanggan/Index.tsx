@@ -34,6 +34,7 @@ export default function Index({ pelanggan, filters }: Props) {
                     { header: 'Kode', cell: (r) => <span className="font-medium">{r.kode_pelanggan}</span> },
                     { header: 'Nama Pelanggan', cell: (r) => r.nama },
                     { header: 'Telepon', cell: (r) => r.telepon ?? '-' },
+                    { header: 'Termin', cell: (r) => (r.termin_hari > 0 ? `${r.termin_hari} hari` : 'Tunai') },
                     { header: 'Alamat', cell: (r) => r.alamat ?? '-' },
                 ]}
                 actions={(r) => <RowActions editHref={`/pelanggan/${r.id}/edit`} onDelete={() => hapus.setTarget(r)} />}

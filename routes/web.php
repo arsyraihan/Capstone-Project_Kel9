@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\BarangController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\KeuanganController;
+use App\Http\Controllers\KonsinyasiController;
 use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\MonitoringPemasokController;
 use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PemasokController;
 use App\Http\Controllers\PenerimaanController;
@@ -24,7 +27,7 @@ use Illuminate\Support\Facades\Route;
  *   gudang      - Staf Gudang (penerimaan, penyimpanan)
  *   picker      - Packing (pengambilan barang)
  *   pengiriman  - Pengemasan & Pengiriman
- *   manajemen   - Manajemen User (uang masuk/keluar; fitur kas menyusul)
+ *   manajemen   - Manajemen (hutang, piutang, kas, konsinyasi, monitoring pemasok)
  */
 
 Route::redirect('/', '/dashboard')->name('home');
@@ -46,8 +49,31 @@ Route::middleware('auth')->group(function () {
 
     // Laporan stok / barang masuk / barang keluar
     Route::get('laporan', [LaporanController::class, 'index'])
-        ->middleware('role:admin,pengadaan,gudang')
+        ->middleware('role:admin,pengadaan,gudang,manajemen')
         ->name('laporan.index');
+
+    // Pengawasan pasokan: dipesan vs diterima
+    Route::get('monitoring-pemasok', [MonitoringPemasokController::class, 'index'])
+        ->middleware('role:manajemen,admin,pengadaan')
+        ->name('monitoring.index');
+
+    // Keuangan: manajemen dan admin boleh melihat
+    Route::middleware('role:manajemen,admin')->group(function () {
+        Route::get('keuangan/hutang', [KeuanganController::class, 'hutang'])->name('keuangan.hutang');
+        Route::get('keuangan/piutang', [KeuanganController::class, 'piutang'])->name('keuangan.piutang');
+        Route::get('keuangan/kas', [KeuanganController::class, 'kas'])->name('keuangan.kas');
+        Route::get('konsinyasi', [KonsinyasiController::class, 'index'])->name('konsinyasi.index');
+        Route::get('konsinyasi/{id}', [KonsinyasiController::class, 'show'])->whereNumber('id')->name('konsinyasi.show');
+    });
+
+    // Hanya manajemen yang mencatat pembayaran dan membuat penyelesaian konsinyasi
+    Route::middleware('role:manajemen')->group(function () {
+        Route::get('keuangan/bayar/{jenis}/{id}', [KeuanganController::class, 'bayar'])
+            ->whereIn('jenis', ['hutang', 'piutang', 'konsinyasi'])->whereNumber('id')->name('keuangan.bayar');
+        Route::post('keuangan/bayar/{jenis}/{id}', [KeuanganController::class, 'simpanBayar'])
+            ->whereIn('jenis', ['hutang', 'piutang', 'konsinyasi'])->whereNumber('id')->name('keuangan.bayar.simpan');
+        Route::post('konsinyasi', [KonsinyasiController::class, 'store'])->name('konsinyasi.store');
+    });
 
     // Staf Pengadaan & CO: membuat dan mengubah PO serta pesanan.
     // (Didaftarkan lebih dulu agar /create tidak tertangkap oleh route {id} di bawah.)
@@ -71,6 +97,9 @@ Route::middleware('auth')->group(function () {
         Route::get('penerimaan', [PenerimaanController::class, 'index'])->name('penerimaan.index');
         Route::get('penerimaan/{id}', [PenerimaanController::class, 'show'])->name('penerimaan.show');
         Route::post('penerimaan/{id}', [PenerimaanController::class, 'store'])->name('penerimaan.store');
+
+        Route::get('retur-konsinyasi', [KonsinyasiController::class, 'retur'])->name('konsinyasi.retur');
+        Route::post('retur-konsinyasi', [KonsinyasiController::class, 'simpanRetur'])->name('konsinyasi.retur.simpan');
 
         Route::get('penyimpanan', [PenyimpananController::class, 'index'])->name('penyimpanan.index');
         Route::patch('penyimpanan/{barang}', [PenyimpananController::class, 'update'])->name('penyimpanan.update');

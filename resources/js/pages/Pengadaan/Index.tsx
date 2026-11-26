@@ -8,7 +8,7 @@ import RowActions from '@/components/RowActions';
 import StatusBadge from '@/components/StatusBadge';
 import useAuth from '@/hooks/useAuth';
 import useHapus from '@/hooks/useHapus';
-import { formatTanggal } from '@/lib/format';
+import { formatRupiah, formatTanggal, statusTagihan, tanggalHariIni } from '@/lib/format';
 import { Paginated, Pembelian } from '@/types';
 
 interface Props {
@@ -44,6 +44,13 @@ export default function Index({ pembelian, filters }: Props) {
                     { header: 'Jenis Barang', cell: (r) => r.detail?.length ?? 0, className: 'text-right' },
                     { header: 'Total Pcs', cell: (r) => (r.detail ?? []).reduce((total, d) => total + d.jumlah, 0), className: 'text-right' },
                     { header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
+                    { header: 'Nilai', cell: (r) => (r.status === 'diterima' ? formatRupiah(r.total) : '-'), className: 'text-right whitespace-nowrap' },
+                    {
+                        header: 'Bayar',
+                        cell: (r) => (
+                            <StatusBadge status={r.status === 'diterima' && r.cara_bayar !== 'konsinyasi' ? statusTagihan(r.total, r.dibayar, r.jatuh_tempo, tanggalHariIni()) : r.cara_bayar} />
+                        ),
+                    },
                 ]}
                 actions={(r) => (
                     <RowActions

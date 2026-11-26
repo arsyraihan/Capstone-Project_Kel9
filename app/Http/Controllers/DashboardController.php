@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Repositories\Interfaces\BarangRepositoryInterface;
+use App\Repositories\Interfaces\KeuanganRepositoryInterface;
 use App\Repositories\Interfaces\MutasiStokRepositoryInterface;
 use App\Repositories\Interfaces\PembelianRepositoryInterface;
 use App\Repositories\Interfaces\PesananRepositoryInterface;
@@ -15,12 +16,12 @@ class DashboardController extends Controller
 {
     /** Bagian dashboard yang ditampilkan untuk tiap peran (selain "Tugas Anda" yang selalu ada). */
     private const TAMPIL = [
-        'admin' => ['ringkasan', 'grafik', 'stokMinimum', 'pesananTerbaru'],
-        'pengadaan' => ['ringkasan', 'grafik', 'stokMinimum', 'pesananTerbaru'],
+        'admin' => ['ringkasan', 'keuangan', 'grafik', 'pemasok', 'stokMinimum', 'pesananTerbaru'],
+        'pengadaan' => ['ringkasan', 'grafik', 'pemasok', 'stokMinimum', 'pesananTerbaru'],
         'gudang' => ['ringkasan', 'grafik', 'stokMinimum'],
         'picker' => [],
         'pengiriman' => ['pesananTerbaru'],
-        'manajemen' => ['ringkasan', 'grafik', 'pesananTerbaru'],
+        'manajemen' => ['ringkasan', 'keuangan', 'grafikKas', 'umurPiutang', 'grafik', 'pemasok', 'stokMinimum', 'pesananTerbaru'],
         'petugas' => ['ringkasan', 'stokMinimum', 'pesananTerbaru'], // peran lama
     ];
 
@@ -30,6 +31,7 @@ class DashboardController extends Controller
         private PembelianRepositoryInterface $pembelian,
         private MutasiStokRepositoryInterface $mutasi,
         private UserRepositoryInterface $users,
+        private KeuanganRepositoryInterface $keuangan,
     ) {
     }
 
@@ -46,6 +48,10 @@ class DashboardController extends Controller
                 ? $this->barang->ringkasan() + ['pesanan_belum_dikirim' => $this->pesanan->jumlahBelumDikirim()]
                 : null,
             'grafik' => $ada('grafik') ? $this->mutasi->rekapBulanan(6) : null,
+            'keuangan' => $ada('keuangan') ? $this->keuangan->ringkasan() : null,
+            'grafikKas' => $ada('grafikKas') ? $this->keuangan->rekapKasBulanan(6) : null,
+            'umurPiutang' => $ada('umurPiutang') ? $this->keuangan->umurPiutang() : null,
+            'pemasok' => $ada('pemasok') ? $this->keuangan->pemenuhanPemasok() : null,
             'stokMinimum' => $ada('stokMinimum') ? $this->barang->getStokMinimum(5) : null,
             'pesananTerbaru' => $ada('pesananTerbaru') ? $this->pesanan->terbaru(5) : null,
         ]);
@@ -106,12 +112,13 @@ class DashboardController extends Controller
                 ];
 
             case 'manajemen':
-                $po = $this->pembelian->hitungPerStatus();
+                $k = $this->keuangan->ringkasan();
 
                 return [
-                    $item('PO belum diterima', $po['dipesan'] ?? 0, '/pengadaan'),
-                    $item('Pesanan belum dikirim', $this->belumDikirim($this->pesanan->hitungPerStatus()), '/pesanan'),
-                    $item('Barang di bawah stok minimum', $this->barang->ringkasan()['di_bawah_minimum'], '/stok', true),
+                    $item('Hutang PO jatuh tempo (7 hari / lewat)', $k['jumlah_hutang_jatuh_tempo'], '/keuangan/hutang', true),
+                    $item('Penyelesaian konsinyasi belum lunas', $k['jumlah_konsinyasi_belum_lunas'], '/konsinyasi', true),
+                    $item('Piutang lewat jatuh tempo', $k['jumlah_piutang_lewat'], '/keuangan/piutang?status=jatuh_tempo', true),
+                    $item('PO belum diterima', $k['jumlah_po_belum_diterima'], '/monitoring-pemasok'),
                 ];
 
             default:

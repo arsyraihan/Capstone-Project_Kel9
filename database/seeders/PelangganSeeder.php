@@ -9,6 +9,9 @@ class PelangganSeeder extends Seeder
 {
     public function run(): void
     {
+        // Termin pembayaran (hari); 0 = tunai. Hanya diisi untuk pelanggan baru.
+        $termin = ['PLG-001' => 14, 'PLG-002' => 0, 'PLG-003' => 0, 'PLG-004' => 30, 'PLG-005' => 14, 'PLG-006' => 30];
+
         $data = [
             ['PLG-001', 'Toko Busana Barokah', '0812-3456-7801', 'Jl. Brawijaya No. 21, Kediri'],
             ['PLG-002', 'Toko Pakaian Sinar Terang', '0813-2233-4402', 'Jl. Pahlawan No. 9, Nganjuk'],
@@ -19,10 +22,11 @@ class PelangganSeeder extends Seeder
         ];
 
         foreach ($data as [$kode, $nama, $telepon, $alamat]) {
-            Pelanggan::updateOrCreate(
-                ['kode_pelanggan' => $kode],
-                ['nama' => $nama, 'telepon' => $telepon, 'alamat' => $alamat]
-            );
+            $pelanggan = Pelanggan::firstOrNew(['kode_pelanggan' => $kode]);
+            if (! $pelanggan->exists) {
+                $pelanggan->termin_hari = $termin[$kode];
+            }
+            $pelanggan->fill(['nama' => $nama, 'telepon' => $telepon, 'alamat' => $alamat])->save();
         }
     }
 }

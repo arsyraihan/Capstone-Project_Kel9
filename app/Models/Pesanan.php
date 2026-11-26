@@ -15,7 +15,7 @@ class Pesanan extends Model
 
     protected $fillable = [
         'no_pesanan', 'tanggal', 'pelanggan_id', 'status', 'jumlah_koli',
-        'ekspedisi', 'no_resi', 'tanggal_kirim', 'keterangan', 'dibuat_oleh',
+        'ekspedisi', 'no_resi', 'tanggal_kirim', 'keterangan', 'dibuat_oleh', 'cara_bayar', 'total', 'jatuh_tempo',
     ];
 
     protected function casts(): array
@@ -24,6 +24,8 @@ class Pesanan extends Model
             'tanggal' => 'date:Y-m-d',
             'tanggal_kirim' => 'date:Y-m-d',
             'jumlah_koli' => 'integer',
+            'jatuh_tempo' => 'date:Y-m-d',
+            'total' => 'float',
         ];
     }
 
@@ -35,6 +37,11 @@ class Pesanan extends Model
     public function detail(): HasMany
     {
         return $this->hasMany(DetailPesanan::class);
+    }
+
+    public function pembayaran(): HasMany
+    {
+        return $this->hasMany(Pembayaran::class)->orderBy('tanggal')->orderBy('id');
     }
 
     public function pembuat(): BelongsTo

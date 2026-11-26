@@ -1,7 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     ArrowDownToLine,
+    BookOpen,
     Boxes,
+    CreditCard,
+    HandCoins,
+    PackageSearch,
+    Repeat,
+    Undo2,
     ClipboardList,
     FileBarChart,
     Handshake,
@@ -58,12 +64,23 @@ const menu: MenuGroup[] = [
             { label: 'Pengambilan', href: '/pengambilan', icon: PackageOpen, roles: ['picker'] },
             { label: 'Pengemasan', href: '/pengemasan', icon: PackageCheck, roles: ['pengiriman'] },
             { label: 'Pengiriman', href: '/pengiriman', icon: Truck, roles: ['pengiriman'] },
+            { label: 'Retur Konsinyasi', href: '/retur-konsinyasi', icon: Undo2, roles: ['gudang'] },
+        ],
+    },
+    {
+        title: 'Keuangan & Monitoring',
+        items: [
+            { label: 'Monitoring Pemasok', href: '/monitoring-pemasok', icon: PackageSearch, roles: ['manajemen', 'admin', 'pengadaan'] },
+            { label: 'Hutang Pemasok', href: '/keuangan/hutang', icon: CreditCard, roles: ['manajemen', 'admin'] },
+            { label: 'Konsinyasi', href: '/konsinyasi', icon: Repeat, roles: ['manajemen', 'admin'] },
+            { label: 'Piutang Pelanggan', href: '/keuangan/piutang', icon: HandCoins, roles: ['manajemen', 'admin'] },
+            { label: 'Buku Kas', href: '/keuangan/kas', icon: BookOpen, roles: ['manajemen', 'admin'] },
         ],
     },
     {
         title: 'Lainnya',
         items: [
-            { label: 'Laporan', href: '/laporan', icon: FileBarChart, roles: ['admin', 'pengadaan', 'gudang'] },
+            { label: 'Laporan', href: '/laporan', icon: FileBarChart, roles: ['admin', 'pengadaan', 'gudang', 'manajemen'] },
             { label: 'Pengguna', href: '/pengguna', icon: UserCog, roles: ['admin'] },
         ],
     },

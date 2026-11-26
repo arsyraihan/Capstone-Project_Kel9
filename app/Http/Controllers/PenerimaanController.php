@@ -44,9 +44,14 @@ class PenerimaanController extends Controller
         $po = $this->pembelian->find($id);
 
         try {
-            $this->stok->terimaPembelian($po, $request->user()->id, $request->validated('keterangan'));
+            $this->stok->terimaPembelian(
+                $po,
+                $request->user()->id,
+                $request->validated('keterangan'),
+                diterima: $request->validated('diterima'),
+            );
         } catch (StokException $e) {
-            return redirect()->route('penerimaan.index')->with('error', $e->getMessage());
+            return back()->with('error', $e->getMessage());
         }
 
         return redirect()->route('penerimaan.index')

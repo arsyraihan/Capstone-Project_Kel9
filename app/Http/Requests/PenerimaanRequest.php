@@ -15,11 +15,13 @@ class PenerimaanRequest extends FormRequest
     {
         return [
             'keterangan' => ['nullable', 'string', 'max:500'],
+            'diterima' => ['required', 'array'],
+            'diterima.*' => ['required', 'integer', 'min:0'],
         ];
     }
 
     public function attributes(): array
     {
-        return ['keterangan' => 'Keterangan'];
+        return ['keterangan' => 'Keterangan', 'diterima' => 'Jumlah datang', 'diterima.*' => 'Jumlah datang'];
     }
 }

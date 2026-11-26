@@ -17,9 +17,11 @@ class PesananRequest extends FormRequest
             'tanggal' => ['required', 'date'],
             'pelanggan_id' => ['required', 'integer', 'exists:pelanggan,id'],
             'keterangan' => ['nullable', 'string', 'max:500'],
+            'cara_bayar' => ['required', 'in:tunai,tempo'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.barang_id' => ['required', 'integer', 'exists:barang,id', 'distinct'],
             'items.*.jumlah' => ['required', 'integer', 'min:1'],
+            'items.*.harga_satuan' => ['required', 'integer', 'min:0'],
         ];
     }
 
@@ -32,6 +34,8 @@ class PesananRequest extends FormRequest
             'items' => 'Daftar barang',
             'items.*.barang_id' => 'Barang',
             'items.*.jumlah' => 'Jumlah',
+            'items.*.harga_satuan' => 'Harga satuan',
+            'cara_bayar' => 'Cara bayar',
         ];
     }
 

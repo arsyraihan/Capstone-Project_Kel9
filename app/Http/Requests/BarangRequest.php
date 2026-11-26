@@ -24,6 +24,10 @@ class BarangRequest extends FormRequest
             'satuan' => ['required', 'string', 'max:20'],
             'stok_minimum' => ['required', 'integer', 'min:0'],
             'rak_id' => ['nullable', 'integer', 'exists:rak,id'],
+            'harga_beli' => ['required', 'integer', 'min:0'],
+            'harga_jual' => ['required', 'integer', 'min:0', 'gte:harga_beli'],
+            'jenis_stok' => ['required', 'in:beli,konsinyasi'],
+            'pemasok_id' => ['nullable', 'required_if:jenis_stok,konsinyasi', 'integer', 'exists:pemasok,id'],
         ];
     }
 
@@ -38,6 +42,18 @@ class BarangRequest extends FormRequest
             'satuan' => 'Satuan',
             'stok_minimum' => 'Stok minimum',
             'rak_id' => 'Rak',
+            'harga_beli' => 'Harga beli',
+            'harga_jual' => 'Harga jual',
+            'jenis_stok' => 'Jenis stok',
+            'pemasok_id' => 'Pemasok',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'harga_jual.gte' => 'Harga jual tidak boleh lebih kecil dari harga beli.',
+            'pemasok_id.required_if' => 'Barang konsinyasi wajib memiliki pemasok (pemilik titipan).',
         ];
     }
 }

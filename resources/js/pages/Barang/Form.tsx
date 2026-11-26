@@ -5,15 +5,16 @@ import FormCard from '@/components/FormCard';
 import FormInput from '@/components/FormInput';
 import PageHeader from '@/components/PageHeader';
 import SelectInput from '@/components/SelectInput';
-import { Barang, Rak } from '@/types';
+import { Barang, Pemasok, Rak } from '@/types';
 
 interface Props {
     barang: Barang | null;
     rak: Rak[];
     kategori: string[];
+    pemasok: Pemasok[];
 }
 
-export default function Form({ barang, rak, kategori }: Props) {
+export default function Form({ barang, rak, kategori, pemasok }: Props) {
     const { data, setData, post, put, processing, errors } = useForm({
         sku: barang?.sku ?? '',
         nama: barang?.nama ?? '',
@@ -23,6 +24,10 @@ export default function Form({ barang, rak, kategori }: Props) {
         satuan: barang?.satuan ?? 'pcs',
         stok_minimum: String(barang?.stok_minimum ?? 10),
         rak_id: barang?.rak_id ? String(barang.rak_id) : '',
+        harga_beli: String(barang?.harga_beli ?? 0),
+        harga_jual: String(barang?.harga_jual ?? 0),
+        jenis_stok: barang?.jenis_stok ?? 'beli',
+        pemasok_id: barang?.pemasok_id ? String(barang.pemasok_id) : '',
     });
 
     const submit: FormEventHandler = (e) => {
@@ -66,6 +71,33 @@ export default function Form({ barang, rak, kategori }: Props) {
                         ))}
                     </SelectInput>
                 </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <SelectInput label="Jenis Stok" name="jenis_stok" value={data.jenis_stok} onChange={(e) => setData('jenis_stok', e.target.value as 'beli' | 'konsinyasi')} error={errors.jenis_stok}>
+                        <option value="beli">Beli putus (milik sendiri)</option>
+                        <option value="konsinyasi">Konsinyasi (titipan pemasok)</option>
+                    </SelectInput>
+                    {data.jenis_stok === 'konsinyasi' ? (
+                        <SelectInput label="Pemasok (pemilik titipan)" name="pemasok_id" value={data.pemasok_id} onChange={(e) => setData('pemasok_id', e.target.value)} error={errors.pemasok_id}>
+                            <option value="">- Pilih pemasok -</option>
+                            {pemasok.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                    {p.kode_pemasok} - {p.nama}
+                                </option>
+                            ))}
+                        </SelectInput>
+                    ) : (
+                        <div />
+                    )}
+                    <FormInput label={data.jenis_stok === 'konsinyasi' ? 'Harga Titip (Rp)' : 'Harga Beli (Rp)'} name="harga_beli" type="number" min={0} value={data.harga_beli} onChange={(e) => setData('harga_beli', e.target.value)} error={errors.harga_beli} />
+                    <FormInput label="Harga Jual (Rp)" name="harga_jual" type="number" min={0} value={data.harga_jual} onChange={(e) => setData('harga_jual', e.target.value)} error={errors.harga_jual} />
+                </div>
+
+                {data.jenis_stok === 'konsinyasi' && (
+                    <div className="rounded border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-800">
+                        Barang konsinyasi tetap milik pemasok. Toko baru berhutang setelah barang terjual, sebesar jumlah terjual × harga titip, lewat menu Konsinyasi. Barang yang tidak laku dapat diretur.
+                    </div>
+                )}
 
                 <div className="rounded border border-line bg-gray-50 px-3 py-2 text-sm text-gray-600">
                     {barang ? (

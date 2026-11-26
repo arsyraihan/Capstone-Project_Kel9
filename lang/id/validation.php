@@ -18,6 +18,11 @@ return [
         'string' => ':attribute maksimal :max karakter.',
         'array' => ':attribute maksimal memiliki :max item.',
     ],
+    'gte' => [
+        'numeric' => ':attribute minimal :value.',
+    ],
+    'required_if' => ':attribute wajib diisi.',
+    'before_or_equal' => ':attribute harus berupa tanggal sebelum atau sama dengan :date.',
     'confirmed' => 'Konfirmasi :attribute tidak cocok.',
     'date' => ':attribute bukan tanggal yang valid.',
     'after_or_equal' => ':attribute harus berupa tanggal setelah atau sama dengan :date.',

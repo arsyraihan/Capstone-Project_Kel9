@@ -3,17 +3,29 @@
 namespace Database\Seeders;
 
 use App\Models\Barang;
+use App\Models\Pemasok;
 use App\Models\Rak;
 use Illuminate\Database\Seeder;
 
 class BarangSeeder extends Seeder
 {
+    /** Harga [beli/titip, jual] per kategori. Dipakai juga oleh SinkronKeuanganSeeder. */
+    public const HARGA = [
+        'Kemeja' => [85000, 120000],
+        'Kaos' => [35000, 55000],
+        'Celana' => [95000, 140000],
+        'Jaket' => [110000, 165000],
+        'Hijab' => [25000, 40000],
+        'Gamis' => [120000, 175000],
+    ];
+
     /**
      * Stok awal 0. Stok terisi lewat transaksi (StokService) di TransaksiSeeder.
      */
     public function run(): void
     {
         $rak = Rak::pluck('id', 'kode_rak');
+        $penitip = Pemasok::where('kode_pemasok', 'PMS-004')->value('id');
 
         // [sku, nama, kategori, ukuran, warna, kode rak, stok minimum]
         $data = [
@@ -40,18 +52,28 @@ class BarangSeeder extends Seeder
         ];
 
         foreach ($data as [$sku, $nama, $kategori, $ukuran, $warna, $kodeRak, $min]) {
-            Barang::updateOrCreate(
-                ['sku' => $sku],
-                [
-                    'nama' => $nama,
-                    'kategori' => $kategori,
-                    'ukuran' => $ukuran,
-                    'warna' => $warna,
-                    'satuan' => 'pcs',
-                    'stok_minimum' => $min,
-                    'rak_id' => $rak[$kodeRak] ?? null,
-                ]
-            );
+            $barang = Barang::firstOrNew(['sku' => $sku]);
+
+            // Harga dan jenis stok hanya diisi untuk barang baru (data bersama tidak diubah diam-diam).
+            if (! $barang->exists) {
+                [$barang->harga_beli, $barang->harga_jual] = self::HARGA[$kategori];
+
+                // Kategori Hijab adalah barang titipan (konsinyasi) milik PMS-004.
+                if ($kategori === 'Hijab') {
+                    $barang->jenis_stok = 'konsinyasi';
+                    $barang->pemasok_id = $penitip;
+                }
+            }
+
+            $barang->fill([
+                'nama' => $nama,
+                'kategori' => $kategori,
+                'ukuran' => $ukuran,
+                'warna' => $warna,
+                'satuan' => 'pcs',
+                'stok_minimum' => $min,
+                'rak_id' => $rak[$kodeRak] ?? null,
+            ])->save();
         }
     }
 }

@@ -1,9 +1,11 @@
 import { Plus, Trash2 } from 'lucide-react';
 import Button from '@/components/Button';
+import { formatRupiah } from '@/lib/format';
 
 export type ItemRow = {
     barang_id: string;
     jumlah: string;
+    harga_satuan: string;
 };
 
 export interface BarangOption {
@@ -12,6 +14,8 @@ export interface BarangOption {
     nama: string;
     stok: number;
     satuan: string;
+    harga_beli: number;
+    harga_jual: number;
 }
 
 interface Props {
@@ -21,13 +25,24 @@ interface Props {
     errors: Record<string, string | undefined>;
     /** Tampilkan kolom "Stok Tersedia" (dipakai pada form Pesanan). */
     showStok?: boolean;
+    /** Tampilkan harga satuan (terisi dari master barang, bisa diubah), subtotal, dan total. */
+    harga?: 'harga_beli' | 'harga_jual';
 }
 
 /** Tabel item dinamis: pilih barang, isi jumlah, tambah/hapus baris. Dipakai oleh form PO dan Pesanan. */
-export default function ItemRows({ items, onChange, barang, errors, showStok = false }: Props) {
+export default function ItemRows({ items, onChange, barang, errors, showStok = false, harga }: Props) {
     const ubah = (index: number, field: keyof ItemRow, value: string) => onChange(items.map((item, i) => (i === index ? { ...item, [field]: value } : item)));
+
+    // Memilih barang sekaligus mengisi harga dari master barang.
+    const pilihBarang = (index: number, id: string) => {
+        const b = barang.find((x) => String(x.id) === id);
+        onChange(items.map((item, i) => (i === index ? { ...item, barang_id: id, harga_satuan: b && harga ? String(b[harga]) : '0' } : item)));
+    };
+
+    const subtotal = (item: ItemRow) => (Number(item.jumlah) || 0) * (Number(item.harga_satuan) || 0);
+    const kolom = 4 + (showStok ? 1 : 0) + (harga ? 2 : 0);
     const hapus = (index: number) => onChange(items.filter((_, i) => i !== index));
-    const tambah = () => onChange([...items, { barang_id: '', jumlah: '1' }]);
+    const tambah = () => onChange([...items, { barang_id: '', jumlah: '1', harga_satuan: '0' }]);
 
     const dipilihDiBarisLain = (index: number) => new Set(items.filter((_, i) => i !== index).map((item) => item.barang_id));
 
@@ -49,13 +64,15 @@ export default function ItemRows({ items, onChange, barang, errors, showStok = f
                             <th className="border border-line px-2 py-2 font-semibold">Barang</th>
                             {showStok && <th className="w-32 border border-line px-2 py-2 text-right font-semibold">Stok Tersedia</th>}
                             <th className="w-28 border border-line px-2 py-2 font-semibold">Jumlah</th>
+                            {harga && <th className="w-36 border border-line px-2 py-2 font-semibold">Harga Satuan</th>}
+                            {harga && <th className="w-36 border border-line px-2 py-2 text-right font-semibold">Subtotal</th>}
                             <th className="w-20 border border-line px-2 py-2 text-center font-semibold">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         {items.length === 0 && (
                             <tr>
-                                <td colSpan={showStok ? 5 : 4} className="border border-line px-2 py-6 text-center text-gray-500">
+                                <td colSpan={kolom} className="border border-line px-2 py-6 text-center text-gray-500">
                                     Belum ada barang. Klik "Tambah Baris".
                                 </td>
                             </tr>
@@ -71,7 +88,7 @@ export default function ItemRows({ items, onChange, barang, errors, showStok = f
                                     <td className="border border-line px-2 py-2">
                                         <select
                                             value={item.barang_id}
-                                            onChange={(e) => ubah(index, 'barang_id', e.target.value)}
+                                            onChange={(e) => pilihBarang(index, e.target.value)}
                                             className={`w-full rounded border bg-white px-2 py-1.5 text-sm focus:border-navy focus:ring-1 focus:ring-navy focus:outline-none ${
                                                 errors[`items.${index}.barang_id`] ? 'border-danger' : 'border-line'
                                             }`}
@@ -102,6 +119,22 @@ export default function ItemRows({ items, onChange, barang, errors, showStok = f
                                         />
                                         {errors[`items.${index}.jumlah`] && <p className="mt-1 text-xs text-danger">{errors[`items.${index}.jumlah`]}</p>}
                                     </td>
+                                    {harga && (
+                                        <td className="border border-line px-2 py-2">
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                value={item.harga_satuan}
+                                                onChange={(e) => ubah(index, 'harga_satuan', e.target.value)}
+                                                aria-label="Harga satuan"
+                                                className={`w-full rounded border bg-white px-2 py-1.5 text-sm focus:border-navy focus:ring-1 focus:ring-navy focus:outline-none ${
+                                                    errors[`items.${index}.harga_satuan`] ? 'border-danger' : 'border-line'
+                                                }`}
+                                            />
+                                            {errors[`items.${index}.harga_satuan`] && <p className="mt-1 text-xs text-danger">{errors[`items.${index}.harga_satuan`]}</p>}
+                                        </td>
+                                    )}
+                                    {harga && <td className="border border-line px-2 py-2 text-right">{formatRupiah(subtotal(item))}</td>}
                                     <td className="border border-line px-2 py-2 text-center">
                                         <Button size="sm" variant="danger" onClick={() => hapus(index)} aria-label="Hapus baris">
                                             <Trash2 className="size-3.5" />
@@ -110,6 +143,15 @@ export default function ItemRows({ items, onChange, barang, errors, showStok = f
                                 </tr>
                             );
                         })}
+                        {harga && items.length > 0 && (
+                            <tr className="bg-gray-100 font-semibold">
+                                <td colSpan={kolom - 2} className="border border-line px-2 py-2 text-right">
+                                    Total Nilai
+                                </td>
+                                <td className="border border-line px-2 py-2 text-right">{formatRupiah(items.reduce((t, item) => t + subtotal(item), 0))}</td>
+                                <td className="border border-line" />
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

@@ -2,7 +2,9 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Models\Barang;
 use App\Models\Pembelian;
+use App\Models\PenyelesaianKonsinyasi;
 use App\Models\Pemasok;
 use App\Repositories\Interfaces\PemasokRepositoryInterface;
 
@@ -19,6 +21,8 @@ class PemasokRepository extends BaseRepository implements PemasokRepositoryInter
 
     public function isDipakai(int|string $id): bool
     {
-        return Pembelian::where('pemasok_id', $id)->exists();
+        return Pembelian::where('pemasok_id', $id)->exists()
+            || Barang::where('pemasok_id', $id)->exists()
+            || PenyelesaianKonsinyasi::where('pemasok_id', $id)->exists();
     }
 }

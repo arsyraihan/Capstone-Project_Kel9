@@ -1,13 +1,16 @@
 import { Link } from '@inertiajs/react';
 import { ReactNode } from 'react';
 import AdminLayout from '@/components/AdminLayout';
+import KasBarChart, { RekapKas } from '@/components/Charts/KasBarChart';
 import MutasiBarChart, { RekapBulanan } from '@/components/Charts/MutasiBarChart';
+import KotakUang from '@/components/Kotak';
 import PageHeader from '@/components/PageHeader';
 import StatusBadge from '@/components/StatusBadge';
+import TabelPemasok from '@/components/TabelPemasok';
 import useAuth from '@/hooks/useAuth';
-import { formatTanggal } from '@/lib/format';
+import { formatRupiah, formatTanggal } from '@/lib/format';
 import { namaPeran } from '@/lib/peran';
-import { Barang, Pesanan } from '@/types';
+import { Barang, PemenuhanPemasok, Pesanan, UmurPiutang } from '@/types';
 
 interface Antrean {
     label: string;
@@ -28,6 +31,21 @@ interface Props {
     grafik: RekapBulanan[] | null;
     stokMinimum: Barang[] | null;
     pesananTerbaru: Pesanan[] | null;
+    keuangan: {
+        nilai_persediaan: number;
+        nilai_titipan: number;
+        hutang_total: number;
+        hutang_lewat: number;
+        hutang_segera: number;
+        piutang_total: number;
+        piutang_lewat: number;
+        kas_masuk_bulan_ini: number;
+        kas_keluar_bulan_ini: number;
+        saldo_kas: number;
+    } | null;
+    grafikKas: RekapKas[] | null;
+    umurPiutang: UmurPiutang[] | null;
+    pemasok: PemenuhanPemasok[] | null;
 }
 
 const angka = (n: number) => n.toLocaleString('id-ID');
@@ -56,7 +74,7 @@ function Panel({ judul, aksi, children }: { judul: string; aksi?: ReactNode; chi
     );
 }
 
-export default function Dashboard({ tampil, antrean, ringkasan, grafik, stokMinimum, pesananTerbaru }: Props) {
+export default function Dashboard({ tampil, antrean, ringkasan, grafik, stokMinimum, pesananTerbaru, keuangan, grafikKas, umurPiutang, pemasok }: Props) {
     const { user, is } = useAuth();
     // Hanya peran ini yang boleh membuka halaman detail pesanan.
     const bisaLihatPesanan = is('admin', 'pengadaan', 'manajemen');
@@ -94,6 +112,80 @@ export default function Dashboard({ tampil, antrean, ringkasan, grafik, stokMini
                     <Kotak label="Total Stok" nilai={ringkasan.total_stok} satuan="pcs" />
                     <Kotak label="Barang di Bawah Stok Minimum" nilai={ringkasan.di_bawah_minimum} merah={ringkasan.di_bawah_minimum > 0} />
                     <Kotak label="Pesanan Belum Dikirim" nilai={ringkasan.pesanan_belum_dikirim} />
+                </div>
+            )}
+
+            {keuangan && (
+                <div className="mb-4">
+                    <h2 className="mb-2 text-sm font-semibold text-gray-900">Statistik Keuangan</h2>
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <KotakUang label="Nilai Persediaan" nilai={formatRupiah(keuangan.nilai_persediaan)} keterangan={`Barang titipan: ${formatRupiah(keuangan.nilai_titipan)}`} />
+                        <KotakUang
+                            label="Hutang ke Pemasok"
+                            nilai={formatRupiah(keuangan.hutang_total)}
+                            keterangan={`Lewat tempo ${formatRupiah(keuangan.hutang_lewat)} · 7 hari lagi ${formatRupiah(keuangan.hutang_segera)}`}
+                            merah={keuangan.hutang_lewat > 0}
+                        />
+                        <KotakUang
+                            label="Piutang Pelanggan"
+                            nilai={formatRupiah(keuangan.piutang_total)}
+                            keterangan={`Lewat tempo ${formatRupiah(keuangan.piutang_lewat)}`}
+                            merah={keuangan.piutang_lewat > 0}
+                        />
+                        <KotakUang
+                            label="Saldo Kas"
+                            nilai={formatRupiah(keuangan.saldo_kas)}
+                            keterangan={`Bulan ini: masuk ${formatRupiah(keuangan.kas_masuk_bulan_ini)} · keluar ${formatRupiah(keuangan.kas_keluar_bulan_ini)}`}
+                            merah={keuangan.saldo_kas < 0}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {grafikKas && umurPiutang && (
+                <div className="mb-4 grid gap-4 xl:grid-cols-3">
+                    <div className="xl:col-span-2">
+                        <Panel judul="Uang Masuk vs Keluar (6 Bulan Terakhir)">
+                            <div className="p-3">
+                                <KasBarChart data={grafikKas} />
+                            </div>
+                        </Panel>
+                    </div>
+                    <Panel judul="Umur Piutang">
+                        <table className="w-full border-collapse text-sm">
+                            <thead>
+                                <tr className="bg-gray-100 text-left text-gray-700">
+                                    <th className="border border-line px-3 py-2 font-semibold">Kelompok</th>
+                                    <th className="border border-line px-3 py-2 text-right font-semibold">Pesanan</th>
+                                    <th className="border border-line px-3 py-2 text-right font-semibold">Nilai</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {umurPiutang.map((u) => (
+                                    <tr key={u.label} className="odd:bg-white even:bg-gray-50">
+                                        <td className="border border-line px-3 py-2">{u.label}</td>
+                                        <td className="border border-line px-3 py-2 text-right">{u.jumlah}</td>
+                                        <td className="border border-line px-3 py-2 text-right">{formatRupiah(u.nilai)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </Panel>
+                </div>
+            )}
+
+            {pemasok && (
+                <div className="mb-4">
+                    <Panel
+                        judul="Monitoring Pemasok: Barang Dipesan vs Diterima"
+                        aksi={
+                            <Link href="/monitoring-pemasok" className="text-sm text-navy hover:underline">
+                                Lihat rincian
+                            </Link>
+                        }
+                    >
+                        <TabelPemasok data={pemasok} />
+                    </Panel>
                 </div>
             )}
 

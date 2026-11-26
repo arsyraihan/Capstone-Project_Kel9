@@ -7,7 +7,7 @@ export const namaPeran: Record<Role, string> = {
     gudang: 'Staf Gudang',
     picker: 'Packing (Picker)',
     pengiriman: 'Pengemasan & Pengiriman',
-    manajemen: 'Manajemen User',
+    manajemen: 'Manajemen',
     petugas: 'Petugas (peran lama)',
 };
 
@@ -21,6 +21,6 @@ export const tugasPeran: Record<Role, string> = {
     gudang: 'Menerima barang dari pemasok, menyimpannya di rak, dan memantau stok.',
     picker: 'Mengambil barang di rak sesuai pesanan.',
     pengiriman: 'Mengemas pesanan, mengirim lewat ekspedisi, dan mencetak Surat Jalan.',
-    manajemen: 'Mengurus uang masuk dan uang keluar.',
+    manajemen: 'Memantau pasokan dan mengurus hutang, piutang, kas, serta konsinyasi.',
     petugas: 'Peran lama. Alihkan ke salah satu peran di atas.',
 };

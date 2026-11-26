@@ -12,6 +12,7 @@ export default function Form({ pelanggan }: { pelanggan: Pelanggan | null }) {
         nama: pelanggan?.nama ?? '',
         telepon: pelanggan?.telepon ?? '',
         alamat: pelanggan?.alamat ?? '',
+        termin_hari: String(pelanggan?.termin_hari ?? 0),
     });
 
     const submit: FormEventHandler = (e) => {
@@ -34,6 +35,7 @@ export default function Form({ pelanggan }: { pelanggan: Pelanggan | null }) {
                 <FormInput label="Nama Pelanggan" name="nama" value={data.nama} onChange={(e) => setData('nama', e.target.value)} error={errors.nama} />
                 <FormInput label="Telepon" name="telepon" value={data.telepon} onChange={(e) => setData('telepon', e.target.value)} error={errors.telepon} />
                 <FormTextarea label="Alamat" name="alamat" value={data.alamat} onChange={(e) => setData('alamat', e.target.value)} error={errors.alamat} />
+                <FormInput label="Termin Pembayaran (hari)" name="termin_hari" type="number" min={0} max={180} value={data.termin_hari} onChange={(e) => setData('termin_hari', e.target.value)} error={errors.termin_hari} hint="Jangka waktu pelanggan membayar setelah barang dikirim. Isi 0 untuk tunai." />
             </FormCard>
         </AdminLayout>
     );

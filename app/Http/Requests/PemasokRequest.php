@@ -19,6 +19,7 @@ class PemasokRequest extends FormRequest
             'nama' => ['required', 'string', 'max:150'],
             'telepon' => ['nullable', 'string', 'max:30'],
             'alamat' => ['nullable', 'string', 'max:500'],
+            'termin_hari' => ['required', 'integer', 'min:0', 'max:180'],
         ];
     }
 
@@ -29,6 +30,7 @@ class PemasokRequest extends FormRequest
             'nama' => 'Nama pemasok',
             'telepon' => 'Telepon',
             'alamat' => 'Alamat',
+            'termin_hari' => 'Termin pembayaran',
         ];
     }
 }
