@@ -13,6 +13,7 @@ class Barang extends Model
     protected $fillable = [
         'sku', 'nama', 'kategori', 'ukuran', 'warna',
         'satuan', 'stok', 'stok_minimum', 'rak_id',
+        'harga_beli', 'harga_jual', 'jenis_stok', 'pemasok_id',
     ];
 
     protected function casts(): array
@@ -20,12 +21,25 @@ class Barang extends Model
         return [
             'stok' => 'integer',
             'stok_minimum' => 'integer',
+            'harga_beli' => 'float',
+            'harga_jual' => 'float',
         ];
     }
 
     public function rak(): BelongsTo
     {
         return $this->belongsTo(Rak::class);
+    }
+
+    /** Pemilik barang titipan (hanya untuk barang konsinyasi). */
+    public function pemasok(): BelongsTo
+    {
+        return $this->belongsTo(Pemasok::class);
+    }
+
+    public function isKonsinyasi(): bool
+    {
+        return $this->jenis_stok === 'konsinyasi';
     }
 
     public function mutasiStok(): HasMany

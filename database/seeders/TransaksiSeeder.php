@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Exceptions\KeuanganException;
 use App\Models\Barang;
 use App\Models\Pelanggan;
 use App\Models\Pembelian;
@@ -10,6 +11,7 @@ use App\Models\Pesanan;
 use App\Models\User;
 use App\Repositories\Interfaces\PembelianRepositoryInterface;
 use App\Repositories\Interfaces\PesananRepositoryInterface;
+use App\Services\KeuanganService;
 use App\Services\StokService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -35,6 +37,12 @@ class TransaksiSeeder extends Seeder
 
     private User $pengiriman;
 
+    private User $manajemen;
+
+    private int $urutPo = 0;
+
+    private int $urutTitipan = 0;
+
     private array $pemasokIds = [];
 
     private array $pelangganIds = [];
@@ -47,6 +55,7 @@ class TransaksiSeeder extends Seeder
         private PembelianRepositoryInterface $pembelian,
         private PesananRepositoryInterface $pesanan,
         private StokService $stok,
+        private KeuanganService $keuangan,
     ) {
     }
 
@@ -64,6 +73,7 @@ class TransaksiSeeder extends Seeder
         $this->gudang = User::where('email', 'gudang@inventaris.test')->firstOrFail();
         $this->picker = User::where('email', 'picker@inventaris.test')->firstOrFail();
         $this->pengiriman = User::where('email', 'pengiriman@inventaris.test')->firstOrFail();
+        $this->manajemen = User::where('email', 'manajemen@inventaris.test')->firstOrFail();
         $this->pemasokIds = Pemasok::orderBy('id')->pluck('id')->all();
         $this->pelangganIds = Pelanggan::orderBy('id')->pluck('id')->all();
 
@@ -77,6 +87,7 @@ class TransaksiSeeder extends Seeder
         }
 
         $this->pesananPenutup();
+        $this->keuanganContoh();
 
         $this->command?->info('Transaksi contoh selesai dibuat.');
     }
@@ -136,35 +147,65 @@ class TransaksiSeeder extends Seeder
     /** @param  array<int, int>  $items  barang_id => jumlah */
     private function poDiterima(Carbon $waktuTerima, array $items): void
     {
-        if ($items === []) {
-            return;
-        }
+        foreach ($this->buatPo($waktuTerima->copy()->subDays(2), $items, 'Pengiriman reguler dari pemasok') as $po) {
+            // Setiap PO ke-4 datang kurang kirim: baris pertama hanya sekitar 80%.
+            $diterima = null;
+            if (++$this->urutPo % 4 === 0) {
+                $detail = $po->detail()->orderBy('id')->get();
+                $diterima = $detail->pluck('jumlah', 'id')->all();
+                $diterima[$detail->first()->id] = (int) floor($detail->first()->jumlah * 0.8);
+            }
 
-        $po = $this->buatPo($waktuTerima->copy()->subDays(2), $items, 'Pengiriman reguler dari pemasok');
-        $this->stok->terimaPembelian($po, $this->gudang->id, null, $waktuTerima);
+            $this->stok->terimaPembelian($po, $this->gudang->id, null, $waktuTerima, $diterima);
+        }
     }
 
     /** @param  array<int, int>  $items  barang_id => jumlah */
     private function poDipesan(Carbon $waktu, array $items): void
     {
-        if ($items === []) {
-            return;
-        }
-
         $this->buatPo($waktu, $items, 'Menunggu kiriman dari pemasok');
     }
 
-    private function buatPo(Carbon $tanggal, array $items, string $keterangan): Pembelian
+    /**
+     * Barang titipan dipisah menjadi PO konsinyasi ke pemiliknya; sisanya PO beli putus
+     * (tempo bila pemasok memberi termin, selain itu tunai).
+     *
+     * @return array<int, Pembelian>
+     */
+    private function buatPo(Carbon $tanggal, array $items, string $keterangan): array
     {
-        $pemasokId = $this->pemasokIds[$this->urutPemasok++ % count($this->pemasokIds)];
+        if ($items === []) {
+            return [];
+        }
 
-        return $this->pembelian->createWithDetail([
-            'tanggal' => $tanggal->toDateString(),
-            'pemasok_id' => $pemasokId,
-            'status' => 'dipesan',
-            'keterangan' => $keterangan,
-            'dibuat_oleh' => $this->pengadaan->id,
-        ], $this->keDetail($items));
+        $barang = Barang::whereIn('id', array_keys($items))->get()->keyBy('id');
+        $kelompok = [];
+        foreach ($items as $id => $jumlah) {
+            $pemilik = $barang[$id]->isKonsinyasi() ? $barang[$id]->pemasok_id : 0;
+            $kelompok[$pemilik][] = ['barang_id' => $id, 'jumlah' => $jumlah, 'harga_satuan' => $barang[$id]->harga_beli];
+        }
+
+        $hasil = [];
+        foreach ($kelompok as $pemilik => $detail) {
+            if ($pemilik) {
+                $pemasokId = $pemilik;
+                $caraBayar = 'konsinyasi';
+            } else {
+                $pemasokId = $this->pemasokIds[$this->urutPemasok++ % count($this->pemasokIds)];
+                $caraBayar = Pemasok::findOrFail($pemasokId)->termin_hari > 0 ? 'tempo' : 'tunai';
+            }
+
+            $hasil[] = $this->pembelian->createWithDetail([
+                'tanggal' => $tanggal->toDateString(),
+                'pemasok_id' => $pemasokId,
+                'status' => 'dipesan',
+                'cara_bayar' => $caraBayar,
+                'keterangan' => $keterangan,
+                'dibuat_oleh' => $this->pengadaan->id,
+            ], $detail);
+        }
+
+        return $hasil;
     }
 
     /** Stok awal: 5x stok minimum untuk potongan daftar barang. */
@@ -208,24 +249,30 @@ class TransaksiSeeder extends Seeder
      */
     private function buatPesanan(Carbon $waktu, string $akhir, ?array $items = null): void
     {
-        $items ??= $this->itemPesananAcak();
+        $items ??= $this->tambahTitipan($this->itemPesananAcak());
 
         if ($items === []) {
             return;
         }
 
-        $pelangganId = $this->pelangganIds[$this->urutPelanggan++ % count($this->pelangganIds)];
+        $pelanggan = Pelanggan::findOrFail($this->pelangganIds[$this->urutPelanggan++ % count($this->pelangganIds)]);
+        $barang = Barang::whereIn('id', array_keys($items))->get()->keyBy('id');
 
         // Pesanan dibuat Staf Pengadaan & CO sebelum barang diambil (beberapa jam sebelumnya).
         $dibuat = $waktu->copy()->subHours(mt_rand(2, 20));
 
         $pesanan = $this->pesanan->createWithDetail([
             'tanggal' => $dibuat->toDateString(),
-            'pelanggan_id' => $pelangganId,
+            'pelanggan_id' => $pelanggan->id,
             'status' => 'baru',
+            'cara_bayar' => $pelanggan->termin_hari > 0 ? 'tempo' : 'tunai',
             'keterangan' => null,
             'dibuat_oleh' => $this->pengadaan->id,
-        ], $this->keDetail($items), $dibuat);
+        ], collect($items)->map(fn (int $jumlah, int $id) => [
+            'barang_id' => $id,
+            'jumlah' => $jumlah,
+            'harga_satuan' => $barang[$id]->harga_jual,
+        ])->values()->all(), $dibuat);
 
         if ($akhir === 'baru') {
             return;
@@ -279,6 +326,19 @@ class TransaksiSeeder extends Seeder
             ->all();
     }
 
+    /** Setiap pesanan menyertakan satu barang titipan (selama masih ada stoknya). */
+    private function tambahTitipan(array $items): array
+    {
+        $titipan = Barang::where('jenis_stok', 'konsinyasi')->where('stok', '>', 1)->orderBy('id')->get();
+        if ($titipan->isEmpty() || $titipan->whereIn('id', array_keys($items))->isNotEmpty()) {
+            return $items;
+        }
+
+        $b = $titipan[$this->urutTitipan++ % $titipan->count()];
+
+        return $items + [$b->id => max(1, min(mt_rand(3, 10), intdiv($b->stok, 2)))];
+    }
+
     /** Stok akhir yang dituju agar beberapa barang berada di bawah (atau tepat di) stok minimum. */
     private const TARGET_STOK_RENDAH = [
         'KAO-001-S-HTM' => 15,   // minimum 20  -> di bawah minimum
@@ -303,14 +363,68 @@ class TransaksiSeeder extends Seeder
         $this->buatPesanan(now()->copy(), 'dikemas', $items);
     }
 
-    /** @param  array<int, int>  $items  barang_id => jumlah */
-    private function keDetail(array $items): array
-    {
-        $detail = [];
-        foreach ($items as $barangId => $jumlah) {
-            $detail[] = ['barang_id' => $barangId, 'jumlah' => $jumlah];
-        }
+    // ------------------------------------------------------------------ Keuangan
 
-        return $detail;
+    /** Saldo awal kas, pelunasan yang sudah jatuh tempo (sebagian menunggak/dicicil), dan konsinyasi. */
+    private function keuanganContoh(): void
+    {
+        $hariIni = now()->toDateString();
+
+        $this->keuangan->catatKas([
+            'tanggal' => now()->startOfMonth()->subMonthsNoOverflow(5)->toDateString(),
+            'arah' => 'masuk',
+            'jenis' => 'saldo_awal',
+            'jumlah' => 150_000_000,
+            'metode' => 'transfer',
+            'keterangan' => 'Saldo awal kas',
+            'user_id' => $this->manajemen->id,
+        ]);
+
+        $hutang = Pembelian::where('status', 'diterima')->where('cara_bayar', '!=', 'konsinyasi')
+            ->where('total', '>', 0)->where('jatuh_tempo', '<=', $hariIni)->orderBy('id')->get();
+        $this->lunasiContoh('hutang', $hutang);
+
+        $piutang = Pesanan::whereIn('status', ['dikirim', 'selesai'])->where('total', '>', 0)
+            ->where('jatuh_tempo', '<=', $hariIni)->orderBy('id')->get();
+        $this->lunasiContoh('piutang', $piutang);
+
+        // Penyelesaian konsinyasi tiap akhir bulan; yang sudah jatuh tempo dibayar.
+        $pemilik = Barang::where('jenis_stok', 'konsinyasi')->distinct()->pluck('pemasok_id');
+        for ($bulan = 5; $bulan >= 1; $bulan--) {
+            $akhir = now()->startOfMonth()->subMonthsNoOverflow($bulan)->endOfMonth()->toDateString();
+
+            foreach ($pemilik as $pemasokId) {
+                try {
+                    $p = $this->keuangan->buatPenyelesaian($pemasokId, $akhir, $this->manajemen->id);
+                } catch (KeuanganException) {
+                    continue; // belum ada penjualan pada periode itu
+                }
+
+                if ($p->jatuh_tempo->toDateString() <= $hariIni) {
+                    $this->keuangan->bayar('konsinyasi', $p->id, $p->total, $p->jatuh_tempo->toDateString(), 'transfer', null, $this->manajemen->id);
+                }
+            }
+        }
+    }
+
+    /** Yang tunai selalu lunas; dari yang tempo, tiap ke-4 menunggak dan tiap ke-5 baru dicicil separuh. */
+    private function lunasiContoh(string $jenis, $dokumen): void
+    {
+        $urut = 0;
+        foreach ($dokumen as $d) {
+            $jumlah = $d->total;
+
+            if ($d->cara_bayar === 'tempo') {
+                $urut++;
+                if ($urut % 4 === 0) {
+                    continue;
+                }
+                if ($urut % 5 === 0) {
+                    $jumlah = round($d->total / 2);
+                }
+            }
+
+            $this->keuangan->bayar($jenis, $d->id, $jumlah, $d->jatuh_tempo->toDateString(), $d->cara_bayar === 'tunai' ? 'tunai' : 'transfer', null, $this->manajemen->id);
+        }
     }
 }

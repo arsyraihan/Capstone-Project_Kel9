@@ -11,7 +11,12 @@ class DetailPembelian extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['pembelian_id', 'barang_id', 'jumlah'];
+    protected $fillable = ['pembelian_id', 'barang_id', 'jumlah', 'harga_satuan', 'jumlah_diterima'];
+
+    protected function casts(): array
+    {
+        return ['jumlah' => 'integer', 'harga_satuan' => 'float', 'jumlah_diterima' => 'integer'];
+    }
 
     public function pembelian(): BelongsTo
     {

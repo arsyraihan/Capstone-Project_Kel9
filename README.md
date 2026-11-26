@@ -58,6 +58,10 @@ php artisan migrate --seed
 ```
 Perintah ini membuat semua tabel dan mengisi data contoh (rak, pemasok, pelanggan, barang, serta transaksi contoh).
 
+> Perintah di atas untuk database **baru/kosong**. Jika database Supabase bersama sudah berisi data,
+> cukup jalankan `php artisan migrate`, lalu `php artisan db:seed --class=SinkronKeuanganSeeder`
+> (lihat bagian *Fitur keuangan & monitoring*).
+
 > ⚠️ Jangan memakai `migrate:fresh` atau `db:wipe` pada database bersama (Supabase), karena akan **menghapus seluruh data**.
 
 ### 6. Jalankan aplikasi
@@ -83,7 +87,7 @@ Buka **http://localhost:8000** di browser.
 | Staf Gudang | `gudang@inventaris.test` | `password` | Penerimaan, penyimpanan, stok |
 | Packing (Picker) | `picker@inventaris.test` | `password` | Pengambilan barang di rak |
 | Pengemasan & Pengiriman | `pengiriman@inventaris.test` | `password` | Kemas, kirim, Surat Jalan, selesai |
-| Manajemen User | `manajemen@inventaris.test` | `password` | Uang masuk dan keluar (menyusul di fase berikutnya) |
+| Manajemen | `manajemen@inventaris.test` | `password` | Monitoring pemasok, hutang, piutang, kas, konsinyasi |
 
 > Akun `petugas@inventaris.test` (peran lama) tetap ada di database bersama sampai diubah oleh admin
 > lewat menu **Pengguna** ke salah satu peran di atas.
@@ -98,6 +102,49 @@ php artisan db:seed --class=SinkronPeranSeeder
 
 Seeder ini membuat akun enam peran dan menyesuaikan pelaksana pada transaksi contoh. Data buatan anggota
 kelompok setelah 6 Nov 2026 tidak diubah.
+
+## Fitur keuangan & monitoring
+
+**Monitoring pemasok.** Gudang mengisi **jumlah datang** saat penerimaan. Menu *Monitoring Pemasok* dan
+dashboard membandingkan barang dipesan dengan yang diterima (persentase pemenuhan, PO kurang kirim,
+PO belum datang, rata-rata lama kirim).
+
+**Pembayaran ke pemasok** (dipilih saat membuat PO):
+
+| Cara bayar | Kapan menjadi hutang | Jatuh tempo |
+|---|---|---|
+| Tunai | saat barang diterima | tanggal terima |
+| Tempo (kredit) | saat barang diterima, boleh dicicil | tanggal terima + termin pemasok |
+| Konsinyasi | saat barang titipan terjual | periode akhir penyelesaian + termin pemasok |
+
+Hutang dihitung dari jumlah yang **diterima**, bukan yang dipesan.
+
+**Pembayaran dari pelanggan:** piutang timbul saat pesanan dikirim. Tunai jatuh tempo pada tanggal kirim,
+tempo ditambah termin pelanggan.
+
+**Konsinyasi:** barang jenis *konsinyasi* tetap milik pemasok. Manajemen membuat penyelesaian per periode
+(jumlah terjual × harga titip). Barang tidak laku dapat diretur oleh gudang (*Retur Konsinyasi*).
+Penjualan yang dikirim pada tanggal akhir periode **setelah** penyelesaian dibuat tidak ikut tertagih,
+jadi buat penyelesaian setelah pengiriman hari itu selesai.
+
+| Menu | Boleh melihat | Boleh mencatat |
+|---|---|---|
+| Monitoring Pemasok | manajemen, admin, pengadaan | - |
+| Hutang, Piutang, Buku Kas, Konsinyasi | manajemen, admin | manajemen |
+| Retur Konsinyasi | gudang | gudang |
+
+### Untuk database Supabase yang sudah berisi data
+
+Jalankan sekali, berurutan:
+
+```bash
+php artisan migrate
+php artisan db:seed --class=SinkronKeuanganSeeder
+```
+
+Seeder ini mengisi harga barang yang masih 0, menghitung nilai PO dan pesanan lama, lalu mencatatnya
+**sudah lunas** ("Pelunasan data lama") agar tidak muncul sebagai tunggakan. Aman dijalankan berulang.
+Karena tidak ada saldo awal kas pada data lama, saldo di Buku Kas bisa tampak negatif.
 
 ## Build untuk Produksi
 ```bash

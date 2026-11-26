@@ -9,6 +9,9 @@ class PemasokSeeder extends Seeder
 {
     public function run(): void
     {
+        // Termin pembayaran (hari); 0 = tunai. Hanya diisi untuk pemasok baru agar ubahan pengguna tidak tertimpa.
+        $termin = ['PMS-001' => 30, 'PMS-002' => 45, 'PMS-003' => 0, 'PMS-004' => 30, 'PMS-005' => 30];
+
         $data = [
             ['PMS-001', 'CV Garmen Sentosa', '0341-551234', 'Jl. Raya Mojosari No. 12, Malang'],
             ['PMS-002', 'PT Konveksi Jaya Abadi', '031-8765432', 'Jl. Industri Rungkut No. 45, Surabaya'],
@@ -18,10 +21,11 @@ class PemasokSeeder extends Seeder
         ];
 
         foreach ($data as [$kode, $nama, $telepon, $alamat]) {
-            Pemasok::updateOrCreate(
-                ['kode_pemasok' => $kode],
-                ['nama' => $nama, 'telepon' => $telepon, 'alamat' => $alamat]
-            );
+            $pemasok = Pemasok::firstOrNew(['kode_pemasok' => $kode]);
+            if (! $pemasok->exists) {
+                $pemasok->termin_hari = $termin[$kode];
+            }
+            $pemasok->fill(['nama' => $nama, 'telepon' => $telepon, 'alamat' => $alamat])->save();
         }
     }
 }

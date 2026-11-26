@@ -12,6 +12,7 @@ export default function Form({ pemasok }: { pemasok: Pemasok | null }) {
         nama: pemasok?.nama ?? '',
         telepon: pemasok?.telepon ?? '',
         alamat: pemasok?.alamat ?? '',
+        termin_hari: String(pemasok?.termin_hari ?? 30),
     });
 
     const submit: FormEventHandler = (e) => {
@@ -34,6 +35,7 @@ export default function Form({ pemasok }: { pemasok: Pemasok | null }) {
                 <FormInput label="Nama Pemasok" name="nama" value={data.nama} onChange={(e) => setData('nama', e.target.value)} error={errors.nama} />
                 <FormInput label="Telepon" name="telepon" value={data.telepon} onChange={(e) => setData('telepon', e.target.value)} error={errors.telepon} />
                 <FormTextarea label="Alamat" name="alamat" value={data.alamat} onChange={(e) => setData('alamat', e.target.value)} error={errors.alamat} />
+                <FormInput label="Termin Pembayaran (hari)" name="termin_hari" type="number" min={0} max={180} value={data.termin_hari} onChange={(e) => setData('termin_hari', e.target.value)} error={errors.termin_hari} hint="Jangka waktu bayar PO tempo dan konsinyasi. Isi 0 untuk tunai." />
             </FormCard>
         </AdminLayout>
     );

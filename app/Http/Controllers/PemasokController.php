@@ -50,7 +50,7 @@ class PemasokController extends Controller
     public function destroy(string $pemasok): RedirectResponse
     {
         if ($this->pemasok->isDipakai($pemasok)) {
-            return back()->with('error', 'Pemasok tidak dapat dihapus karena sudah digunakan pada Purchase Order.');
+            return back()->with('error', 'Pemasok tidak dapat dihapus karena sudah digunakan pada Purchase Order atau barang konsinyasi.');
         }
 
         $this->pemasok->delete($pemasok);

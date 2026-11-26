@@ -51,6 +51,7 @@ export interface Pemasok {
     nama: string;
     telepon: string | null;
     alamat: string | null;
+    termin_hari: number;
 }
 
 export interface Pelanggan {
@@ -59,6 +60,7 @@ export interface Pelanggan {
     nama: string;
     telepon: string | null;
     alamat: string | null;
+    termin_hari: number;
 }
 
 export interface Barang {
@@ -73,6 +75,11 @@ export interface Barang {
     stok_minimum: number;
     rak_id: number | null;
     rak?: Rak | null;
+    harga_beli: number;
+    harga_jual: number;
+    jenis_stok: 'beli' | 'konsinyasi';
+    pemasok_id: number | null;
+    pemasok?: Pemasok | null;
 }
 
 export interface Pengguna {
@@ -87,6 +94,9 @@ export interface DetailItem {
     barang_id: number;
     jumlah: number;
     barang?: Barang;
+    harga_satuan: number;
+    /** Hanya pada detail PO; null = belum diterima. */
+    jumlah_diterima?: number | null;
 }
 
 export interface Pembelian {
@@ -95,6 +105,12 @@ export interface Pembelian {
     tanggal: string;
     pemasok_id: number;
     status: 'dipesan' | 'diterima';
+    cara_bayar: 'tunai' | 'tempo' | 'konsinyasi';
+    total: number;
+    jatuh_tempo: string | null;
+    /** Hasil withSum; bisa berupa teks dari database. */
+    dibayar?: number | string | null;
+    pembayaran?: Pembayaran[];
     tanggal_terima: string | null;
     keterangan: string | null;
     pemasok?: Pemasok;
@@ -122,6 +138,11 @@ export interface Pesanan {
     tanggal: string;
     pelanggan_id: number;
     status: StatusPesanan;
+    cara_bayar: 'tunai' | 'tempo';
+    total: number;
+    jatuh_tempo: string | null;
+    dibayar?: number | string | null;
+    pembayaran?: Pembayaran[];
     jumlah_koli: number | null;
     ekspedisi: string | null;
     no_resi: string | null;
@@ -139,4 +160,55 @@ export interface RiwayatPesanan {
     status: StatusPesanan;
     waktu: string;
     user?: { id: number; name: string; role: Role } | null;
+}
+
+/** Satu baris arus kas. */
+export interface Pembayaran {
+    id: number;
+    no_bukti: string;
+    tanggal: string;
+    arah: 'masuk' | 'keluar';
+    jenis: 'piutang' | 'hutang' | 'konsinyasi' | 'saldo_awal';
+    jumlah: number;
+    metode: 'tunai' | 'transfer';
+    keterangan: string | null;
+    user?: { id: number; name: string } | null;
+    pesanan?: Pesanan | null;
+    pembelian?: Pembelian | null;
+    penyelesaian?: PenyelesaianKonsinyasi | null;
+}
+
+export interface PenyelesaianKonsinyasi {
+    id: number;
+    no_penyelesaian: string;
+    pemasok_id: number;
+    periode_awal: string;
+    periode_akhir: string;
+    total: number;
+    jatuh_tempo: string;
+    dibayar?: number | string | null;
+    pemasok?: Pemasok;
+    pembuat?: { id: number; name: string } | null;
+    pembayaran?: Pembayaran[];
+    detail?: { id: number; barang_id: number; jumlah_terjual: number; harga_satuan: number; subtotal: number; barang?: Barang }[];
+}
+
+export interface PemenuhanPemasok {
+    id: number;
+    kode_pemasok: string;
+    nama: string;
+    jumlah_po: number;
+    po_belum_datang: number;
+    dipesan: number;
+    diterima: number;
+    persen: number | null;
+    po_kurang_kirim: number;
+    pcs_belum_datang: number;
+    rata_lama_kirim: number | null;
+}
+
+export interface UmurPiutang {
+    label: string;
+    jumlah: number;
+    nilai: number;
 }

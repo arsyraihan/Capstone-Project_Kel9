@@ -24,4 +24,7 @@ interface BarangRepositoryInterface extends RepositoryInterface
 
     /** Jumlah barang yang belum ditempatkan di rak mana pun. */
     public function jumlahTanpaRak(): int;
+
+    /** Barang titipan yang masih ada stoknya (untuk retur). */
+    public function konsinyasiBerstok(): Collection;
 }

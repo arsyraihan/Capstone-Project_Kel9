@@ -3,6 +3,8 @@
 namespace App\Repositories\Eloquent;
 
 use App\Models\MutasiStok;
+use App\Models\Pembayaran;
+use App\Models\PenyelesaianKonsinyasi;
 use App\Models\Pembelian;
 use App\Models\Pesanan;
 use App\Models\RiwayatPesanan;
@@ -26,7 +28,9 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
         return Pembelian::where('dibuat_oleh', $id)->orWhere('diterima_oleh', $id)->exists()
             || Pesanan::where('dibuat_oleh', $id)->exists()
             || MutasiStok::where('user_id', $id)->exists()
-            || RiwayatPesanan::where('user_id', $id)->exists();
+            || RiwayatPesanan::where('user_id', $id)->exists()
+            || Pembayaran::where('user_id', $id)->exists()
+            || PenyelesaianKonsinyasi::where('user_id', $id)->exists();
     }
 
     public function hitungPerPeran(): array

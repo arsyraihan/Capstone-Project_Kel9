@@ -74,4 +74,14 @@ class MutasiStokRepository extends BaseRepository implements MutasiStokRepositor
 
         return $query->orderBy('tanggal')->orderBy('id')->get();
     }
+
+    public function returTerbaru(int $limit = 10): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\MutasiStok::with(['barang', 'user'])
+            ->where('referensi', 'like', 'RTR-%')
+            ->orderByDesc('tanggal')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+    }
 }

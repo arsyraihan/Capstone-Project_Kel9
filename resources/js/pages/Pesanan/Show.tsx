@@ -7,7 +7,8 @@ import ConfirmModal from '@/components/ConfirmModal';
 import PageHeader from '@/components/PageHeader';
 import StatusBadge from '@/components/StatusBadge';
 import useAuth from '@/hooks/useAuth';
-import { formatTanggal, formatWaktu } from '@/lib/format';
+import RiwayatBayar from '@/components/RiwayatBayar';
+import { formatRupiah, formatTanggal, formatWaktu, statusTagihan, tanggalHariIni } from '@/lib/format';
 import { namaPeran } from '@/lib/peran';
 import { Pesanan } from '@/types';
 
@@ -29,6 +30,7 @@ export default function Show({ pesanan }: { pesanan: Pesanan }) {
     const { is } = useAuth();
     // Hanya Staf Pengadaan & CO yang boleh mengubah/membatalkan pesanan (selama masih baru).
     const dapatDiubah = pesanan.status === 'baru' && is('pengadaan');
+    const tagihan = pesanan.status === 'dikirim' || pesanan.status === 'selesai';
 
     return (
         <AdminLayout title={`Pesanan ${pesanan.no_pesanan}`}>
@@ -85,6 +87,21 @@ export default function Show({ pesanan }: { pesanan: Pesanan }) {
                     <Info label="Jumlah Koli">{pesanan.jumlah_koli ?? '-'}</Info>
                     <Info label="Ekspedisi / Resi">{pesanan.ekspedisi ? `${pesanan.ekspedisi} / ${pesanan.no_resi}` : '-'}</Info>
                     <Info label="Tanggal Kirim">{formatTanggal(pesanan.tanggal_kirim)}</Info>
+                    <Info label="Cara Bayar">
+                        <StatusBadge status={pesanan.cara_bayar} />
+                    </Info>
+                    <Info label="Nilai Pesanan">{formatRupiah(pesanan.total)}</Info>
+                    <Info label="Jatuh Tempo">{formatTanggal(pesanan.jatuh_tempo)}</Info>
+                    <Info label="Pembayaran">
+                        {tagihan ? (
+                            <>
+                                <StatusBadge status={statusTagihan(pesanan.total, pesanan.dibayar, pesanan.jatuh_tempo, tanggalHariIni())} />
+                                <span className="ml-2">Dibayar {formatRupiah(pesanan.dibayar)}</span>
+                            </>
+                        ) : (
+                            'Piutang timbul saat dikirim'
+                        )}
+                    </Info>
                     <div className="sm:col-span-2">
                         <Info label="Keterangan">
                             <span className="whitespace-pre-line">{pesanan.keterangan || '-'}</span>
@@ -138,6 +155,8 @@ export default function Show({ pesanan }: { pesanan: Pesanan }) {
                             <th className="border border-line px-3 py-2 font-semibold">Nama Barang</th>
                             <th className="border border-line px-3 py-2 font-semibold">Rak</th>
                             <th className="border border-line px-3 py-2 text-right font-semibold">Jumlah</th>
+                            <th className="border border-line px-3 py-2 text-right font-semibold">Harga Satuan</th>
+                            <th className="border border-line px-3 py-2 text-right font-semibold">Subtotal</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -152,6 +171,8 @@ export default function Show({ pesanan }: { pesanan: Pesanan }) {
                                 <td className="border border-line px-3 py-2 text-right">
                                     {d.jumlah} {d.barang?.satuan}
                                 </td>
+                                <td className="border border-line px-3 py-2 text-right">{formatRupiah(d.harga_satuan)}</td>
+                                <td className="border border-line px-3 py-2 text-right">{formatRupiah(d.jumlah * d.harga_satuan)}</td>
                             </tr>
                         ))}
                         <tr className="bg-gray-100 font-semibold">
@@ -159,10 +180,23 @@ export default function Show({ pesanan }: { pesanan: Pesanan }) {
                                 Total
                             </td>
                             <td className="border border-line px-3 py-2 text-right">{detail.reduce((t, d) => t + d.jumlah, 0)} pcs</td>
+                            <td className="border border-line" />
+                            <td className="border border-line px-3 py-2 text-right">{formatRupiah(pesanan.total)}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+
+            {tagihan && (
+                <div className="mt-4">
+                    {is('manajemen') && Number(pesanan.dibayar ?? 0) < pesanan.total && (
+                        <div className="mb-2 flex justify-end">
+                            <LinkButton href={`/keuangan/bayar/piutang/${pesanan.id}`}>Terima Bayar</LinkButton>
+                        </div>
+                    )}
+                    <RiwayatBayar data={pesanan.pembayaran ?? []} />
+                </div>
+            )}
 
             <ConfirmModal
                 open={batal}

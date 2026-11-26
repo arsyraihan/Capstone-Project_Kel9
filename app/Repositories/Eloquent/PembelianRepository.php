@@ -6,6 +6,7 @@ use App\Models\Pembelian;
 use App\Repositories\Interfaces\PembelianRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 class PembelianRepository extends BaseRepository implements PembelianRepositoryInterface
@@ -19,6 +20,18 @@ class PembelianRepository extends BaseRepository implements PembelianRepositoryI
     public function __construct()
     {
         parent::__construct(new Pembelian());
+    }
+
+    /** Setiap PO membawa jumlah yang sudah dibayar. */
+    protected function query(): Builder
+    {
+        return parent::query()->withSum('pembayaran as dibayar', 'jumlah');
+    }
+
+    /** Halaman detail juga memuat riwayat pembayaran. */
+    public function find(int|string $id): Model
+    {
+        return $this->query()->with('pembayaran.user')->findOrFail($id);
     }
 
     /** Cari berdasarkan nomor PO atau nama pemasok. */

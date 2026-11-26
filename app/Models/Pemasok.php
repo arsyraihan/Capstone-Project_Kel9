@@ -9,7 +9,12 @@ class Pemasok extends Model
 {
     protected $table = 'pemasok';
 
-    protected $fillable = ['kode_pemasok', 'nama', 'telepon', 'alamat'];
+    protected $fillable = ['kode_pemasok', 'nama', 'telepon', 'alamat', 'termin_hari'];
+
+    protected function casts(): array
+    {
+        return ['termin_hari' => 'integer'];
+    }
 
     public function pembelian(): HasMany
     {

@@ -11,7 +11,12 @@ class DetailPesanan extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['pesanan_id', 'barang_id', 'jumlah'];
+    protected $fillable = ['pesanan_id', 'barang_id', 'jumlah', 'harga_satuan'];
+
+    protected function casts(): array
+    {
+        return ['jumlah' => 'integer', 'harga_satuan' => 'float'];
+    }
 
     public function pesanan(): BelongsTo
     {

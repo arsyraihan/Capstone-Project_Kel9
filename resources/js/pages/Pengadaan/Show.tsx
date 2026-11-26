@@ -7,7 +7,8 @@ import ConfirmModal from '@/components/ConfirmModal';
 import PageHeader from '@/components/PageHeader';
 import StatusBadge from '@/components/StatusBadge';
 import useAuth from '@/hooks/useAuth';
-import { formatTanggal } from '@/lib/format';
+import RiwayatBayar from '@/components/RiwayatBayar';
+import { formatRupiah, formatTanggal, statusTagihan, tanggalHariIni } from '@/lib/format';
 import { Pembelian } from '@/types';
 
 function Info({ label, children }: { label: string; children: React.ReactNode }) {
@@ -25,6 +26,8 @@ export default function Show({ pembelian }: { pembelian: Pembelian }) {
     // Hanya Staf Pengadaan & CO yang boleh mengubah/menghapus PO (selama masih dipesan).
     const { is } = useAuth();
     const dapatDiubah = pembelian.status === 'dipesan' && is('pengadaan');
+    // Hutang hanya ada pada PO beli putus yang sudah diterima.
+    const tagihan = pembelian.status === 'diterima' && pembelian.cara_bayar !== 'konsinyasi';
 
     return (
         <AdminLayout title={`PO ${pembelian.no_po}`}>
@@ -53,6 +56,23 @@ export default function Show({ pembelian }: { pembelian: Pembelian }) {
                     <Info label="Dibuat oleh">{pembelian.pembuat?.name ?? '-'}</Info>
                     <Info label="Tanggal diterima">{formatTanggal(pembelian.tanggal_terima)}</Info>
                     <Info label="Diterima oleh">{pembelian.penerima?.name ?? '-'}</Info>
+                    <Info label="Cara Bayar">
+                        <StatusBadge status={pembelian.cara_bayar} />
+                    </Info>
+                    <Info label="Nilai Barang Diterima">{pembelian.status === 'diterima' ? formatRupiah(pembelian.total) : '-'}</Info>
+                    <Info label="Jatuh Tempo">{formatTanggal(pembelian.jatuh_tempo)}</Info>
+                    <Info label="Pembayaran">
+                        {tagihan ? (
+                            <>
+                                <StatusBadge status={statusTagihan(pembelian.total, pembelian.dibayar, pembelian.jatuh_tempo, tanggalHariIni())} />
+                                <span className="ml-2">Dibayar {formatRupiah(pembelian.dibayar)}</span>
+                            </>
+                        ) : pembelian.cara_bayar === 'konsinyasi' ? (
+                            'Lewat penyelesaian konsinyasi'
+                        ) : (
+                            'Menunggu barang diterima'
+                        )}
+                    </Info>
                     <div className="sm:col-span-2">
                         <Info label="Keterangan">
                             <span className="whitespace-pre-line">{pembelian.keterangan || '-'}</span>
@@ -69,7 +89,10 @@ export default function Show({ pembelian }: { pembelian: Pembelian }) {
                             <th className="w-14 border border-line px-3 py-2 text-center font-semibold">No</th>
                             <th className="border border-line px-3 py-2 font-semibold">SKU</th>
                             <th className="border border-line px-3 py-2 font-semibold">Nama Barang</th>
-                            <th className="border border-line px-3 py-2 text-right font-semibold">Jumlah</th>
+                            <th className="border border-line px-3 py-2 text-right font-semibold">Dipesan</th>
+                            <th className="border border-line px-3 py-2 text-right font-semibold">Diterima</th>
+                            <th className="border border-line px-3 py-2 text-right font-semibold">Harga Satuan</th>
+                            <th className="border border-line px-3 py-2 text-right font-semibold">Subtotal</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -83,6 +106,11 @@ export default function Show({ pembelian }: { pembelian: Pembelian }) {
                                 <td className="border border-line px-3 py-2 text-right">
                                     {d.jumlah} {d.barang?.satuan}
                                 </td>
+                                <td className={`border border-line px-3 py-2 text-right ${d.jumlah_diterima != null && d.jumlah_diterima < d.jumlah ? 'font-semibold text-danger' : ''}`}>
+                                    {d.jumlah_diterima ?? '-'}
+                                </td>
+                                <td className="border border-line px-3 py-2 text-right">{formatRupiah(d.harga_satuan)}</td>
+                                <td className="border border-line px-3 py-2 text-right">{formatRupiah((d.jumlah_diterima ?? d.jumlah) * d.harga_satuan)}</td>
                             </tr>
                         ))}
                         <tr className="bg-gray-100 font-semibold">
@@ -90,10 +118,24 @@ export default function Show({ pembelian }: { pembelian: Pembelian }) {
                                 Total
                             </td>
                             <td className="border border-line px-3 py-2 text-right">{detail.reduce((t, d) => t + d.jumlah, 0)} pcs</td>
+                            <td className="border border-line px-3 py-2 text-right">{pembelian.status === 'diterima' ? `${detail.reduce((t, d) => t + (d.jumlah_diterima ?? d.jumlah), 0)} pcs` : '-'}</td>
+                            <td className="border border-line" />
+                            <td className="border border-line px-3 py-2 text-right">{formatRupiah(detail.reduce((t, d) => t + (d.jumlah_diterima ?? d.jumlah) * d.harga_satuan, 0))}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+
+            {tagihan && (
+                <div className="mt-4">
+                    {is('manajemen') && Number(pembelian.dibayar ?? 0) < pembelian.total && (
+                        <div className="mb-2 flex justify-end">
+                            <LinkButton href={`/keuangan/bayar/hutang/${pembelian.id}`}>Bayar Hutang</LinkButton>
+                        </div>
+                    )}
+                    <RiwayatBayar data={pembelian.pembayaran ?? []} />
+                </div>
+            )}
 
             <ConfirmModal
                 open={hapus}

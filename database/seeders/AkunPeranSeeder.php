@@ -14,7 +14,7 @@ class AkunPeranSeeder extends Seeder
         ['gudang@inventaris.test', 'Staf Gudang', 'gudang'],
         ['picker@inventaris.test', 'Staf Packing', 'picker'],
         ['pengiriman@inventaris.test', 'Staf Pengemasan & Pengiriman', 'pengiriman'],
-        ['manajemen@inventaris.test', 'Manajemen User', 'manajemen'],
+        ['manajemen@inventaris.test', 'Manajemen', 'manajemen'],
     ];
 
     public function run(): void

@@ -4,7 +4,9 @@ import ConfirmModal from '@/components/ConfirmModal';
 import DataTable from '@/components/DataTable';
 import PageHeader from '@/components/PageHeader';
 import RowActions from '@/components/RowActions';
+import StatusBadge from '@/components/StatusBadge';
 import useHapus from '@/hooks/useHapus';
+import { formatRupiah } from '@/lib/format';
 import { Barang, Paginated } from '@/types';
 import { Plus } from 'lucide-react';
 
@@ -38,6 +40,9 @@ export default function Index({ barang, filters }: Props) {
                     { header: 'Warna', cell: (r) => r.warna },
                     { header: 'Stok', cell: (r) => `${r.stok} ${r.satuan}`, className: 'text-right' },
                     { header: 'Rak', cell: (r) => r.rak?.kode_rak ?? '-' },
+                    { header: 'Harga Beli', cell: (r) => formatRupiah(r.harga_beli), className: 'text-right whitespace-nowrap' },
+                    { header: 'Harga Jual', cell: (r) => formatRupiah(r.harga_jual), className: 'text-right whitespace-nowrap' },
+                    { header: 'Jenis Stok', cell: (r) => <StatusBadge status={r.jenis_stok} /> },
                 ]}
                 actions={(r) => <RowActions editHref={`/barang/${r.id}/edit`} onDelete={() => hapus.setTarget(r)} />}
             />
